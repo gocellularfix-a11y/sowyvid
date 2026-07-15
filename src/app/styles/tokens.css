@@ -1,0 +1,89 @@
+/*
+ * SowyVid design tokens — derived directly from the mockup
+ * (docs/MOCKUP-ANALYSIS.md). Dark, premium, calm, violet-accented.
+ * These are the single source of truth for color/space/type/radius/elevation.
+ */
+:root {
+  /* ---- Surfaces (near-black with a faint cool tint) ---- */
+  --bg-app: #0a0a0f;
+  --bg-app-2: #08080c;
+  --surface-1: #101017; /* workspace panels / columns */
+  --surface-2: #16161f; /* cards, inputs, drop zone */
+  --surface-3: #1e1e29; /* hover / nested */
+  --surface-selected: rgba(124, 92, 255, 0.1);
+
+  /* ---- Borders / dividers ---- */
+  --border-subtle: rgba(255, 255, 255, 0.06);
+  --border: rgba(255, 255, 255, 0.09);
+  --border-strong: rgba(255, 255, 255, 0.14);
+  --border-accent: rgba(124, 92, 255, 0.55);
+
+  /* ---- Accent (violet) ---- */
+  --accent: #7c5cff;
+  --accent-strong: #6a3ff0;
+  --accent-bright: #8b6cff;
+  --accent-soft: rgba(124, 92, 255, 0.14);
+  --accent-softer: rgba(124, 92, 255, 0.08);
+  --accent-contrast: #ffffff;
+
+  /* ---- Text ---- */
+  --text-primary: #f4f4f7;
+  --text-secondary: #a2a2b0;
+  --text-tertiary: #6c6c7a;
+  --text-on-accent: #ffffff;
+
+  /* ---- Status ---- */
+  --success: #3ecf8e;
+  --warning: #f5b544;
+  --danger: #f2555a;
+  --info: var(--accent);
+
+  /* ---- Typography ---- */
+  --font-sans:
+    'Inter', -apple-system, 'Segoe UI Variable', 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+  --fs-display: 22px;
+  --fs-title: 19px;
+  --fs-heading: 16px;
+  --fs-body: 14px;
+  --fs-small: 13px;
+  --fs-caption: 12px;
+  --fw-regular: 400;
+  --fw-medium: 500;
+  --fw-semibold: 600;
+  --fw-bold: 700;
+  --lh-tight: 1.25;
+  --lh-normal: 1.5;
+
+  /* ---- Spacing (4px base) ---- */
+  --space-1: 4px;
+  --space-2: 8px;
+  --space-3: 12px;
+  --space-4: 16px;
+  --space-5: 20px;
+  --space-6: 24px;
+  --space-8: 32px;
+  --space-10: 40px;
+  --space-12: 48px;
+
+  /* ---- Radius ---- */
+  --radius-sm: 8px;
+  --radius-md: 12px;
+  --radius-lg: 16px;
+  --radius-xl: 20px;
+  --radius-full: 999px;
+
+  /* ---- Elevation ---- */
+  --shadow-card: 0 8px 28px rgba(0, 0, 0, 0.45);
+  --shadow-pop: 0 12px 40px rgba(0, 0, 0, 0.55);
+  --glow-accent: 0 10px 30px rgba(124, 92, 255, 0.35);
+
+  /* ---- Motion ---- */
+  --ease-out: cubic-bezier(0.22, 1, 0.36, 1);
+  --dur-fast: 120ms;
+  --dur-med: 220ms;
+
+  /* ---- Layout ---- */
+  --header-h: 72px;
+  --sidebar-w: 236px;
+  --focus-ring: 0 0 0 2px var(--bg-app), 0 0 0 4px var(--accent);
+}

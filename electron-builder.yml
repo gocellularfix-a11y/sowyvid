@@ -1,0 +1,19 @@
+appId: com.sowyvid.app
+productName: SowyVid
+copyright: Copyright © 2026 SowyVid
+directories:
+  output: release
+  buildResources: build
+files:
+  - out/**/*
+  - package.json
+asarUnpack:
+  - '**/*.wasm'
+win:
+  target:
+    - nsis
+  artifactName: ${productName}-${version}-setup.${ext}
+nsis:
+  oneClick: false
+  allowToChangeInstallationDirectory: true
+  perMachine: false

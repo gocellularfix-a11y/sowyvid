@@ -1,0 +1,7 @@
+{
+  "tool_name": "PowerShell",
+  "tool_input_preview": "{\"command\":\"npm run test:e2e 2>&1 | Select-Object -Last 40\",\"timeout\":180000,\"description\":\"Run Playwright smoke test\"}",
+  "error": "Exit code 1\nRunning 4 tests using 1 worker\r\n\r\n  ✓  1 [chromium] › e2e\\home.spec.ts:14:3 › SowyVid home › renders the four guided steps and trust bar (1.2s)\r\n  ✓  2 [chromium] › e2e\\home.spec.ts:23:3 › SowyVid home › style selection is a working radio group (806ms)\r\n  ✓  3 [chromium] › e2e\\home.spec.ts:29:3 › SowyVid home › describe + continue generates a preview (shell simulation) (2.4s)\r\n  ✘  4 [chromium] › e2e\\home.spec.ts:39:3 › SowyVid home › sidebar navigation switches sections (6.0s)\r\n\r\n\r\n...",
+  "timestamp": "2026-07-15T23:03:49.140Z",
+  "retry_count": 1
+}

@@ -1,0 +1,19 @@
+import { StrictMode } from 'react'
+import { createRoot } from 'react-dom/client'
+import { App } from './App'
+import { ToastProvider } from './ui/Toast'
+import { ErrorBoundary } from './ErrorBoundary'
+import './styles/global.css'
+
+const container = document.getElementById('root')
+if (!container) throw new Error('Root element #root not found')
+
+createRoot(container).render(
+  <StrictMode>
+    <ErrorBoundary>
+      <ToastProvider>
+        <App />
+      </ToastProvider>
+    </ErrorBoundary>
+  </StrictMode>,
+)

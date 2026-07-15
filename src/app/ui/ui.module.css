@@ -1,0 +1,178 @@
+/* ---------------- Button ---------------- */
+.btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-2);
+  border: 1px solid transparent;
+  border-radius: var(--radius-md);
+  font-size: var(--fs-body);
+  font-weight: var(--fw-semibold);
+  line-height: 1;
+  cursor: pointer;
+  transition:
+    background var(--dur-fast) var(--ease-out),
+    transform var(--dur-fast) var(--ease-out),
+    box-shadow var(--dur-fast) var(--ease-out),
+    border-color var(--dur-fast) var(--ease-out);
+  white-space: nowrap;
+  user-select: none;
+}
+.btn:active:not(:disabled) {
+  transform: translateY(1px);
+}
+.btn:disabled {
+  cursor: not-allowed;
+  opacity: 0.45;
+}
+
+.sizeMd {
+  height: 44px;
+  padding: 0 var(--space-5);
+}
+.sizeLg {
+  height: 52px;
+  padding: 0 var(--space-6);
+  font-size: 15px;
+}
+.sizeSm {
+  height: 36px;
+  padding: 0 var(--space-4);
+  font-size: var(--fs-small);
+}
+.block {
+  width: 100%;
+}
+
+.primary {
+  color: var(--text-on-accent);
+  background: linear-gradient(180deg, var(--accent-bright), var(--accent-strong));
+  box-shadow: var(--glow-accent);
+}
+.primary:hover:not(:disabled) {
+  background: linear-gradient(180deg, #9a7dff, var(--accent));
+}
+.secondary {
+  color: var(--text-primary);
+  background: var(--surface-2);
+  border-color: var(--border);
+}
+.secondary:hover:not(:disabled) {
+  background: var(--surface-3);
+  border-color: var(--border-strong);
+}
+.ghost {
+  color: var(--text-secondary);
+  background: transparent;
+}
+.ghost:hover:not(:disabled) {
+  color: var(--text-primary);
+  background: var(--surface-2);
+}
+
+/* ---------------- Icon button ---------------- */
+.iconBtn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 40px;
+  height: 40px;
+  border-radius: var(--radius-md);
+  color: var(--text-secondary);
+  background: transparent;
+  border: 1px solid transparent;
+  cursor: pointer;
+  transition:
+    background var(--dur-fast) var(--ease-out),
+    color var(--dur-fast) var(--ease-out);
+}
+.iconBtn:hover {
+  color: var(--text-primary);
+  background: var(--surface-2);
+}
+
+/* ---------------- Card ---------------- */
+.card {
+  background: var(--surface-2);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-lg);
+}
+.cardPad {
+  padding: var(--space-5);
+}
+
+/* ---------------- Text input ---------------- */
+.field {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+}
+.label {
+  font-size: var(--fs-small);
+  color: var(--text-secondary);
+  font-weight: var(--fw-medium);
+}
+.input,
+.textarea {
+  width: 100%;
+  color: var(--text-primary);
+  background: var(--surface-2);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  padding: var(--space-4);
+  font-size: var(--fs-body);
+  font-family: inherit;
+  transition:
+    border-color var(--dur-fast) var(--ease-out),
+    box-shadow var(--dur-fast) var(--ease-out);
+  resize: none;
+}
+.input::placeholder,
+.textarea::placeholder {
+  color: var(--text-tertiary);
+}
+.input:focus,
+.textarea:focus {
+  outline: none;
+  border-color: var(--border-accent);
+  box-shadow: 0 0 0 3px var(--accent-softer);
+}
+.textarea {
+  min-height: 96px;
+  line-height: var(--lh-normal);
+}
+
+/* ---------------- Step badge ---------------- */
+.stepBadge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 30px;
+  height: 30px;
+  border-radius: var(--radius-full);
+  background: var(--accent);
+  color: var(--text-on-accent);
+  font-size: var(--fs-small);
+  font-weight: var(--fw-bold);
+  flex-shrink: 0;
+  box-shadow: 0 4px 14px rgba(124, 92, 255, 0.4);
+}
+
+/* ---------------- Pill / status tag ---------------- */
+.pill {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-1);
+  padding: 3px var(--space-2);
+  border-radius: var(--radius-full);
+  font-size: var(--fs-caption);
+  font-weight: var(--fw-medium);
+  border: 1px solid var(--border);
+  color: var(--text-secondary);
+  background: var(--surface-1);
+}
+.pillAccent {
+  color: var(--accent-bright);
+  border-color: var(--border-accent);
+  background: var(--accent-softer);
+}

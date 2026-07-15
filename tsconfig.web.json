@@ -1,0 +1,21 @@
+{
+  "extends": "./tsconfig.base.json",
+  "compilerOptions": {
+    "composite": true,
+    "lib": ["ES2022", "DOM", "DOM.Iterable"],
+    "jsx": "react-jsx",
+    "types": ["node", "vite/client"],
+    "outDir": "./out/types-web",
+    "noEmit": true
+  },
+  "include": [
+    "src/app/**/*.ts",
+    "src/app/**/*.tsx",
+    "src/features/**/*.ts",
+    "src/features/**/*.tsx",
+    "src/shared/**/*.ts",
+    "src/rules/**/*.ts",
+    "src/render/compositions/**/*.tsx"
+  ],
+  "exclude": ["src/features/**/*.node.ts"]
+}

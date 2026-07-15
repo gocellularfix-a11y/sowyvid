@@ -1,0 +1,55 @@
+# Dependencies
+node_modules/
+.pnp
+.pnp.js
+
+# Build output
+out/
+dist/
+release/
+*.tsbuildinfo
+
+# Electron / packaging
+app-builds/
+.electron-builder-cache/
+
+# Test artifacts
+coverage/
+playwright-report/
+test-results/
+.playwright/
+
+# Local user data must NEVER be committed
+# (SowyVid stores user projects/media in the OS app-data dir, not here.)
+/userdata-dev/
+*.mp4
+*.mov
+*.webm
+!docs/**/*.mp4
+
+# Secrets & local config
+.env
+.env.*
+!.env.example
+*.pem
+*.key
+secrets.json
+
+# Logs
+logs/
+*.log
+npm-debug.log*
+
+# Editor / OS
+.DS_Store
+Thumbs.db
+.idea/
+.vscode/*
+!.vscode/extensions.json
+
+# Remotion / render temp
+.remotion/
+render-temp/
+
+# sql.js wasm is a dependency artifact, keep it out of git if copied
+public/sql-wasm.wasm
