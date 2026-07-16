@@ -22,6 +22,7 @@ import {
   projectAssetResolver,
   listCreativeFamilies,
 } from '@features/creative'
+import { visualPlanForProject } from '@features/visual'
 import type { PersistentDatabase } from '@database/index'
 import { ProjectRepository } from '@database/index'
 import { branding } from '@config/branding'
@@ -185,6 +186,7 @@ export function registerHandlers(ctx: HandlerContext): void {
 
       const { renderPlan, selection } = compileProjectConcept(project, conceptId)
       const rendererPlan = toRendererPlan(renderPlan, projectAssetResolver(project))
+      const visualPlan = visualPlanForProject(project, renderPlan)
 
       // Persist the reproducible selection so the concept survives restart.
       repo.save({
@@ -194,7 +196,7 @@ export function registerHandlers(ctx: HandlerContext): void {
       })
       await db.persist()
 
-      const result: CompiledConceptResult = { renderPlan, rendererPlan, selection }
+      const result: CompiledConceptResult = { renderPlan, rendererPlan, visualPlan, selection }
       return ok(result)
     },
   )

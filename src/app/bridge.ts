@@ -17,6 +17,7 @@ import {
   projectAssetResolver,
   listCreativeFamilies,
 } from '@features/creative'
+import { visualPlanForProject } from '@features/visual'
 import { branding } from '@config/branding'
 
 /**
@@ -103,9 +104,10 @@ function createMockBridge(): SowyvidBridge {
         try {
           const { renderPlan, selection } = compileProjectConcept(project, conceptId)
           const rendererPlan = toRendererPlan(renderPlan, projectAssetResolver(project))
+          const visualPlan = visualPlanForProject(project, renderPlan)
           const next = { ...project, creative: selection, updatedAt: new Date().toISOString() }
           store.set(project.id, next)
-          const result: CompiledConceptResult = { renderPlan, rendererPlan, selection }
+          const result: CompiledConceptResult = { renderPlan, rendererPlan, visualPlan, selection }
           return Promise.resolve(ok(result))
         } catch (e) {
           return Promise.resolve(err('INTERNAL', e instanceof Error ? e.message : String(e)))

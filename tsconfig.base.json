@@ -30,7 +30,8 @@
       "@jorge-engines/northstar-creative/remotion": [
         "packages/northstar-creative-engine/src/adapters/remotion.ts"
       ],
-      "@jorge-engines/mediavault": ["packages/mediavault-engine/src/index.ts"]
+      "@jorge-engines/mediavault": ["packages/mediavault-engine/src/index.ts"],
+      "@jorge-engines/framelogic-visual": ["packages/framelogic-visual-engine/src/index.ts"]
     }
   }
 }

@@ -18,6 +18,7 @@ export default defineConfig({
         'packages/northstar-creative-engine/src/index.ts',
       ),
       '@jorge-engines/mediavault': resolve('packages/mediavault-engine/src/index.ts'),
+      '@jorge-engines/framelogic-visual': resolve('packages/framelogic-visual-engine/src/index.ts'),
     },
   },
   test: {
@@ -27,6 +28,7 @@ export default defineConfig({
       'src/**/*.{test,spec}.ts',
       'packages/northstar-creative-engine/tests/**/*.test.ts',
       'packages/mediavault-engine/tests/**/*.test.ts',
+      'packages/framelogic-visual-engine/tests/**/*.test.ts',
     ],
     exclude: ['node_modules', 'out', 'dist', 'e2e'],
     coverage: {

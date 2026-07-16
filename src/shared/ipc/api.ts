@@ -4,6 +4,7 @@ import type { CreativePlan, CommercialRenderPlan } from '@jorge-engines/northsta
 import type { CreativeFamilyInfo } from '@features/creative/families'
 import type { SowyvidRendererPlan } from '@features/creative/creativePlanToRenderer'
 import type { MediaImportResult, MediaRemoveResult } from '@features/media/types'
+import type { VisualPlan } from '@features/visual/visualPlan'
 
 /**
  * The typed surface exposed to the renderer via the secure preload bridge
@@ -26,6 +27,7 @@ export interface AppInfo {
 export interface CompiledConceptResult {
   renderPlan: CommercialRenderPlan
   rendererPlan: SowyvidRendererPlan
+  visualPlan: VisualPlan
   selection: CreativeSelection
 }
 

@@ -22,6 +22,9 @@ export default defineConfig({
       '@jorge-engines/northstar-creative': resolve(
         'packages/northstar-creative-engine/src/index.ts',
       ),
+      '@jorge-engines/framelogic-visual': resolve(
+        'packages/framelogic-visual-engine/src/index.ts',
+      ),
     },
   },
   plugins: [react()],

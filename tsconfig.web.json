@@ -16,6 +16,7 @@
     "src/shared/**/*.ts",
     "src/config/**/*.ts",
     "packages/northstar-creative-engine/src/**/*.ts",
+    "packages/framelogic-visual-engine/src/**/*.ts",
     "src/render/compositions/**/*.tsx"
   ],
   "exclude": ["src/features/**/*.node.ts", "**/*.test.ts", "**/*.spec.ts"]

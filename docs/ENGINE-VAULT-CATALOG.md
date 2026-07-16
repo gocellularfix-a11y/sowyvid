@@ -68,7 +68,7 @@ Status legend: `AVAILABLE` `AUDITED` `READY` `INTEGRATED` `DEFERRED` `BLOCKED` `
 | Adapters | `src/features/media/` (limits, `mediaImport.node.ts`, types) + `media:import`/`media:remove` IPC |
 | Must not import | React, Electron, database, Northstar, cloud, AI, branding |
 
-## 3. FrameLogic Visual Engine — **DEFERRED**
+## 3. FrameLogic Visual Engine — **INTEGRATED**
 
 | Field | Value |
 |---|---|
@@ -78,11 +78,11 @@ Status legend: `AVAILABLE` `AUDITED` `READY` `INTEGRATED` `DEFERRED` `BLOCKED` `
 | Public API | `resolveArtDirection`, `getMotionProfile`, `resolveGrade`, `planSceneLayouts`, `resolvePolishedTextFrame`, `createVisualDirectionPlan` |
 | Input/Output | Creative scene intents + seed → JSON-safe visual plan |
 | Dependencies | `zod` |
-| Test/Build (vault docs) | 1 file / 4 tests PASS · build PASS · 0 vulns |
-| SowyVid phase | **C (visual/Remotion render)** |
-| Integrated | No — deferred until rendering phase |
-| Adapter required | `CreativePlan → FrameLogic → VisualPlan → Remotion adapter` (Remotion stays app-side) |
-| Must not import | React, Remotion, branding |
+| Test result | 4 own tests + **8 host tests** PASS under SowyVid vitest |
+| SowyVid phase | **C (visual)** |
+| Integrated | **Yes** — builds a validated VisualPlan per commercial, consumed by the Remotion preview. See `docs/FRAMELOGIC-INTEGRATION.md` + `docs/REMOTION-PREVIEW.md` |
+| Adapters | `src/features/visual/` (`frameLogicAdapter`, `visualPlan` contract) |
+| Must not import | React, Remotion, branding, Northstar, SowyVid |
 
 ## 4. SoundWeave Audio Engine — **DEFERRED**
 
