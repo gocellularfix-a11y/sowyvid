@@ -1,7 +1,0 @@
-{
-  "tool_name": "PowerShell",
-  "tool_input_preview": "{\"command\":\"npm run typecheck 2>&1 | Select-Object -Last 20\",\"timeout\":120000,\"description\":\"Typecheck domain + engine\"}",
-  "error": "Exit code 2\n> sowyvid@0.1.0 typecheck\r\n> npm run typecheck:node && npm run typecheck:web\r\n\r\n\r\n> sowyvid@0.1.0 typecheck:node\r\n> tsc --noEmit -p tsconfig.node.json\r\n\r\nsrc/rules/text.ts(3,1): error TS6133: 'TextLimits' is declared but its value is never read.\r\nsrc/rules/text.ts(37,11): error TS2749: 'TextLimits' refers to a value, but is being used as a type here. Did you mean 'typeof TextLimits'?",
-  "timestamp": "2026-07-15T23:21:13.380Z",
-  "retry_count": 1
-}

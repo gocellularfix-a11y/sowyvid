@@ -1,7 +1,8 @@
-import { app, BrowserWindow, shell } from 'electron'
+import { app, BrowserWindow, shell, dialog } from 'electron'
 import { join } from 'node:path'
 import { registerHandlers } from './ipc/registerHandlers'
 import { getAppPaths } from './paths'
+import { openPersistentDatabase, ProjectRepository } from '@database/index'
 
 // SowyVid brands the app and its app-data folder explicitly, independent of the
 // package name, so user data lives under a stable "SowyVid" directory.
@@ -53,10 +54,26 @@ function createMainWindow(): BrowserWindow {
   return win
 }
 
-app.whenReady().then(() => {
+app.whenReady().then(async () => {
   // Ensure the app-data directory tree exists before any handler runs.
-  getAppPaths()
-  registerHandlers()
+  const paths = getAppPaths()
+
+  try {
+    const db = await openPersistentDatabase(join(paths.database, 'sowyvid.db'))
+    const repo = new ProjectRepository(db)
+    registerHandlers({ db, repo })
+  } catch (e) {
+    // A database that cannot open is fatal, but the owner should get a calm
+    // message — not a stack trace — and their data is untouched.
+    const message = e instanceof Error ? e.message : String(e)
+    console.error('[SowyVid] database init failed:', message)
+    dialog.showErrorBox(
+      'SowyVid no pudo iniciar',
+      'No fue posible abrir el almacenamiento local. Tus proyectos están seguros. Intenta abrir SowyVid de nuevo.',
+    )
+    app.quit()
+    return
+  }
 
   createMainWindow()
 

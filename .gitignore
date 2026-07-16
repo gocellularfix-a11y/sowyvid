@@ -40,6 +40,10 @@ logs/
 *.log
 npm-debug.log*
 
+# Harness / tooling session state (not project work)
+.omc/
+.claude/settings.local.json
+
 # Editor / OS
 .DS_Store
 Thumbs.db

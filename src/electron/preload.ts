@@ -10,10 +10,22 @@ import type { SowyvidBridge } from '@shared/ipc/api'
 const bridge: SowyvidBridge = {
   app: {
     info: () => ipcRenderer.invoke(IPC.AppInfo),
-    ping: (message: string) => ipcRenderer.invoke(IPC.Ping, message),
+    ping: (message) => ipcRenderer.invoke(IPC.Ping, message),
+  },
+  projects: {
+    list: () => ipcRenderer.invoke(IPC.ProjectList),
+    create: (input) => ipcRenderer.invoke(IPC.ProjectCreate, input),
+    get: (id) => ipcRenderer.invoke(IPC.ProjectGet, id),
+    save: (project) => ipcRenderer.invoke(IPC.ProjectUpdate, project),
+    delete: (id) => ipcRenderer.invoke(IPC.ProjectDelete, id),
+  },
+  templates: {
+    list: () => ipcRenderer.invoke(IPC.TemplateList),
+  },
+  plan: {
+    generate: (input) => ipcRenderer.invoke(IPC.PlanGenerate, input),
   },
   on: (channel, listener) => {
-    // Only allow subscribing to known main->renderer event channels.
     const allowed = new Set<string>([IPC.RenderProgress, IPC.PhoneSessionStatus])
     if (!allowed.has(channel)) {
       return () => undefined
