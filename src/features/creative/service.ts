@@ -15,6 +15,9 @@ import {
   type AssetResolver,
 } from './creativePlanToRenderer'
 
+/** The engine package identity persisted with each generated commercial. */
+const ENGINE_NAME = '@jorge-engines/northstar-creative'
+
 /**
  * The narrow public surface the SowyVid application uses to drive the creative
  * engine. UI and IPC call these functions; they never touch the engine core
@@ -59,6 +62,7 @@ export function compileProjectConcept(project: Project, conceptId: string): Comp
   })
 
   const selection: CreativeSelection = {
+    engineName: ENGINE_NAME,
     engineVersion: plan.engineVersion,
     family: plan.family,
     variantId: plan.variantId,

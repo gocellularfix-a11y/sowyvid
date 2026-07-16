@@ -26,6 +26,7 @@
     "test": "vitest run",
     "test:watch": "vitest",
     "test:e2e": "playwright test",
+    "test:e2e:electron": "npm run build && playwright test --config playwright.electron.config.ts",
     "postinstall": "node scripts/copy-sql-wasm.mjs"
   },
   "dependencies": {

@@ -9,6 +9,13 @@ import { branding } from '@config/branding'
 // independent of the package name, so user data lives under a stable directory.
 app.setName(branding.dataDirectoryName)
 
+// Test seam: allow the real-Electron integration test to point user data at a
+// throwaway directory. Honored only in unpackaged (dev/test) runs — never in a
+// packaged production build.
+if (!app.isPackaged && process.env.SOWYVID_USER_DATA) {
+  app.setPath('userData', process.env.SOWYVID_USER_DATA)
+}
+
 const isDev = !app.isPackaged
 const RENDERER_DEV_URL = process.env.ELECTRON_RENDERER_URL
 

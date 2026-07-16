@@ -69,6 +69,8 @@ export type CommercialBrief = z.infer<typeof CommercialBrief>
  * renderer turns the plan into frames. They are never collapsed into one object.
  */
 export const CreativeSelection = z.object({
+  /** Engine package identity (Section 8 reproducibility). Defaulted for back-compat. */
+  engineName: z.string().min(1).default('@jorge-engines/northstar-creative'),
   engineVersion: z.string().min(1),
   family: z.string().min(1),
   variantId: z.string().min(1),
