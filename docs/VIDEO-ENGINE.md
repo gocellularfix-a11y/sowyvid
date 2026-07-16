@@ -1,6 +1,13 @@
 # Video Engine
 
-> Status: Not yet implemented — design only.
+> Status: **Preview implemented; MP4 export deferred.** Visual direction now comes
+> from the **FrameLogic Visual Engine** (`docs/FRAMELOGIC-INTEGRATION.md`), and a
+> real Remotion `<Player>` preview renders it (`docs/REMOTION-PREVIEW.md`). The
+> input contract is the **VisualPlan** (built from Northstar's render plan), not the
+> retired `ScenePlan`. MP4 export via `@remotion/renderer` is the next phase.
+
+The rest of this document is the original design sketch; the authoritative,
+implemented behavior is in the FrameLogic + Remotion-preview docs above.
 
 This document describes the planned Remotion composition system for **SowyVid**. Its one
 job is to **render a `ScenePlan`** into moving pictures. All business logic (what scenes

@@ -277,6 +277,18 @@
   aspect-ratio: 4 / 3;
   border-radius: var(--radius-lg);
 }
+.playerWrap {
+  width: 100%;
+  max-height: 420px;
+  display: flex;
+  justify-content: center;
+  border-radius: var(--radius-lg);
+  overflow: hidden;
+  background: #000;
+}
+.playerWrap > * {
+  max-height: 420px;
+}
 .previewEmpty {
   display: flex;
   flex-direction: column;

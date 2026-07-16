@@ -17,9 +17,9 @@ Honest, per-feature state. Legend:
 |---|---|
 | `npm run typecheck` | ✅ passes (node + web) |
 | `npm run lint` | ✅ 0 warnings (`packages/**` vendored engines excluded) |
-| `npm test` | ✅ **71 passing** across 13 files (adds media hardening: streaming, real ffprobe/ffmpeg analysis, reference safety, managed-path security) |
-| `npm run test:e2e` | ✅ 4 passing (browser; incl. UI→engine end-to-end) |
-| `npm run test:e2e:electron` | ✅ 2 passing (real Electron: Northstar persistence + MediaVault import) |
+| `npm test` | ✅ **87 passing** across 16 files (adds FrameLogic visual adapter + Remotion composition-props) |
+| `npm run test:e2e` | ✅ 4 passing (browser; incl. UI→engine→real Remotion Player) |
+| `npm run test:e2e:electron` | ✅ 3 passing (real Electron: Northstar persistence + MediaVault import + protocol/preview) |
 | `npm run build` | ✅ succeeds (main + preload + renderer) |
 | Clean install (fresh clone) | ✅ install + all checks pass (729 pkgs, no workspace issues) |
 
@@ -36,6 +36,8 @@ Honest, per-feature state. Legend:
 | B+ | **Media hardening** | ✅ | SVG rejected; streaming import (bounded memory); ffprobe/ffmpeg analysis + thumbnails/posters; reference-safe deletion; missing-file detection; controlled `sowyvid-media://` protocol |
 | — | Branding decoupled | ✅ | `src/config/branding.ts` single source; `docs/BRANDING.md` |
 | — | Real-Electron verification | ✅ | `e2e-electron/` drives actual preload+IPC+SQLite for persistence & media |
+| C | **FrameLogic visual planning** | ✅ | Validated VisualPlan per commercial (art direction, motion, layout, text-safe frames) |
+| C | **Real Remotion Player preview** | ✅ | Step 4 plays the plan with imported media via `sowyvid-media://`; play/pause/seek/duration; missing-media placeholder |
 
 ## Engine vault (Jorge Engine Vault v1.0.0)
 
@@ -100,9 +102,9 @@ independently re-run here — they will be validated as each is integrated.
 
 ## Recommended next step
 
-**Phase C — integrate FrameLogic Visual Engine + a Remotion preview.** With real
-media (MediaVault) now feeding validated creative plans (Northstar), the biggest
-remaining jump is turning a `CommercialRenderPlan` into something the owner can
-*see*: add FrameLogic's renderer-neutral visual direction and a Remotion
-`<Player>` preview of the scene plan. (A smaller, high-value intermediate step is
-thumbnail/poster generation for imported media.)
+**MP4 export (the render phase).** The owner can now *see* the commercial in a real
+Remotion preview; the next jump is turning that same plan into a downloadable file
+via `@remotion/renderer` in a Node/child process (H.264, platform presets, progress,
+cancel, safe temp cleanup) — enabling "Descargar video". A smaller intermediate
+step is live in-preview video playback (`OffthreadVideo`) so video clips play, not
+just show their poster still. (SoundWeave audio is the phase after.)

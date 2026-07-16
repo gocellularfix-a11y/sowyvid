@@ -37,6 +37,8 @@ test.describe('SowyVid home', () => {
     const summary = page.getByTestId('commercial-summary')
     await expect(summary).toBeVisible({ timeout: 5000 })
     await expect(summary).toHaveText(/\d+ escenas · \d+s/)
+    // A real Remotion <Player> preview mounts (FrameLogic visual plan).
+    await expect(page.getByTestId('preview-player')).toBeVisible()
     await expect(page.getByRole('button', { name: /Descargar video/ })).toBeVisible()
   })
 

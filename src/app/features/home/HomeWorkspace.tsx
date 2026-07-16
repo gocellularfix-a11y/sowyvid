@@ -7,7 +7,9 @@ import { MediaThumb, type ThumbKind } from '../../ui/MediaThumb'
 import { useToast } from '../../ui/toastContext'
 import { getBridge, isBrowserPreview } from '../../bridge'
 import { tileImageUrl } from '../../mediaUrl'
+import { PreviewPlayer } from './PreviewPlayer'
 import type { MediaAsset } from '@shared/domain/media'
+import type { VisualPlan } from '@features/visual/visualPlan'
 import { copy } from '../../content/copy'
 import styles from './HomeWorkspace.module.css'
 
@@ -39,6 +41,7 @@ export function HomeWorkspace(): JSX.Element {
   const [styleId, setStyleId] = useState<string>(copy.step3.styles[0].id)
   const [gen, setGen] = useState<GenState>('idle')
   const [result, setResult] = useState<CommercialResult | null>(null)
+  const [visualPlan, setVisualPlan] = useState<VisualPlan | null>(null)
   const [projectId, setProjectId] = useState<string | null>(null)
   const [media, setMedia] = useState<MediaAsset[]>([])
   const [importing, setImporting] = useState(false)
@@ -150,6 +153,7 @@ export function HomeWorkspace(): JSX.Element {
         scenes: compiled.value.renderPlan.scenes.length,
         durationSec: Math.round(compiled.value.renderPlan.durationSec),
       })
+      setVisualPlan(compiled.value.visualPlan)
       setGen('ready')
     } catch {
       setGen('idle')
@@ -324,11 +328,11 @@ export function HomeWorkspace(): JSX.Element {
           )}
           {gen === 'ready' && (
             <>
-              <MediaThumb
-                kind={STYLE_THUMBS[styleId] ?? 'generic'}
-                play
-                className={styles.preview}
-              />
+              {visualPlan && projectId ? (
+                <PreviewPlayer visualPlan={visualPlan} projectId={projectId} media={media} />
+              ) : (
+                <MediaThumb kind={STYLE_THUMBS[styleId] ?? 'generic'} play className={styles.preview} />
+              )}
               {result && (
                 <p className={styles.stepSubtitle} data-testid="commercial-summary">
                   Comercial creado: {result.scenes} escenas · {result.durationSec}s

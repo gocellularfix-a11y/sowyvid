@@ -7,7 +7,12 @@ import type { MediaVariant } from '@features/media/managedPath'
  * filesystem path is ever handed to the renderer.
  */
 export function mediaUrl(projectId: string, asset: MediaAsset, variant: MediaVariant): string {
-  return `sowyvid-media://asset/${projectId}/${asset.id}/${variant}`
+  return mediaUrlById(projectId, asset.id, variant)
+}
+
+/** Build a controlled media URL from a stable media id. */
+export function mediaUrlById(projectId: string, mediaId: string, variant: MediaVariant): string {
+  return `sowyvid-media://asset/${projectId}/${mediaId}/${variant}`
 }
 
 /** Best image source for a Step-2 tile: thumbnail → poster → original image. */
