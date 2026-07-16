@@ -40,6 +40,8 @@ Honest, per-feature state. Legend:
 | C | **Real Remotion Player preview** | ✅ | Step 4 plays the plan with imported media via `sowyvid-media://`; play/pause/seek/duration; missing-media placeholder |
 | C+ | **Live managed-video playback** | ✅ | `<OffthreadVideo>` replaces the poster-only still; trim to scene, plan-defined short-clip loop/freeze, poster as loading/failure fallback, **source audio muted by default**; protocol now honors byte ranges (seeking). Verified with a real ffmpeg clip decoding/playing/seeking in Electron (`docs/VIDEO-ENGINE.md`) |
 | D | **SoundWeave audio planning** | ✅ | Validated, persisted AudioPlan (engine name/version, music, narration, source-audio policy, fades, looping, ducking, **explicit missing-track state**); real audio in the `<Player>` with master/music/narration/source controls; missing audio warns without breaking. Verified with a real mp3 decoding/playing in Electron (`docs/SOUNDWEAVE-INTEGRATION.md`) |
+| D+ | **Manual Suno music brief** | 🟡 | Provider contract + registry + deterministic brief (Northstar intent + FrameLogic energy + SoundWeave duration) implemented and tested. **No UI** — no copy button, no "Abrir Suno". `SunoProvider` has no `generateTrack` at all; no unofficial APIs (`docs/SUNO-MANUAL-WORKFLOW.md`) |
+| E | **Production MP4 render engine** | 🟡 | Real H.264 + AAC rendered through the production path from the same composition props as the preview; fingerprinted bundle cache (self-repairing, junction-safe), loopback render media server, progress/cancel/atomic publish/temp cleanup. **Verified audible (−26.8 dBFS) and non-black** via `npm run verify:render`. **"Descargar video" is NOT wired** — no IPC, no history, no UI (`docs/MP4-EXPORT.md`) |
 
 ## Engine vault (Jorge Engine Vault v1.0.0)
 
@@ -85,8 +87,16 @@ independently re-run here — they will be validated as each is integrated.
 
 ## What does NOT work yet (not pretended to)
 
-- **No MP4 export.** The plan is validated, persisted and previewable, but nothing is
-  encoded to a file yet. "Descargar video" is marked unavailable.
+- **The owner cannot export.** The render ENGINE works and is verified (a real,
+  audible, non-black MP4 through the production path), but **"Descargar video" is
+  still inactive**: no IPC handler, no output-folder picker, no progress/cancel UI,
+  no export history, no open-file/open-folder, no retry. Export is reachable only
+  from `npm run verify:render`.
+- **Packaged-path validation is NOT done.** Everything is verified in development
+  only. The render bundler compiles `src/render/remotionEntry.ts` **from source at
+  runtime**, which a packaged build must ship — the biggest open unknown.
+- **No music library UI and no metadata form** — `audio.musicId` and `audioMeta`
+  are honored by the engine but cannot be set from the interface.
 - **No music library UI yet** — the AudioPlan resolves `audio.musicId`, but choosing /
   previewing / replacing a track in the interface is not built. The Suno music brief is
   likewise not wired into the UI.
@@ -115,15 +125,22 @@ independently re-run here — they will be validated as each is integrated.
 
 ## Recommended next step
 
-**SoundWeave audio, then MP4 export.** The picture is now complete — the owner sees
-their commercial with their own clips playing live. What is missing is sound and a
-file.
+**Wire "Descargar video" to the render engine that already works.** The hard part
+is done and measured; what is missing is the bridge from the button to
+`runRenderJob`:
 
-1. **SoundWeave** (audio planning) → an AudioPlan the Remotion composition renders:
-   background music, narration, source-audio policy, fades, ducking, looping.
-2. **MP4 export** via `@remotion/renderer` in a worker process (H.264 + AAC,
-   platform presets, progress, cancel, safe temp cleanup) — enabling "Descargar
-   video".
+1. **IPC + job registry** — `render.start` / `render.cancel` + a progress event
+   channel; one active render per project; gate the button on a valid creative
+   plan, a valid visual plan, all managed assets resolving, and no active render.
+2. **Export history + output folder** — persist each export (path, preset,
+   fingerprint, measured duration/size) with open-file / open-containing-folder /
+   retry.
+3. **Music library UI + Suno brief UI** — choose/preview/replace a track, fill in
+   `audioMeta`, copy the brief, "Abrir Suno".
+4. **Packaged-path validation** (`docs/MP4-EXPORT.md` — *Not done*). The bundler
+   compiles `src/render/remotionEntry.ts` from source at runtime; a packaged build
+   must ship it. Build a Windows unpacked package and prove ffmpeg/ffprobe
+   resolve, the media protocol resolves, and a real render is audible — do not
+   claim packaging readiness from development mode.
 
-Export comes *after* audio on purpose: exporting first would only be able to
-produce a silent video, and a silent export is not evidence that rendering works.
+Then BridgeDrop (phone import) and PromptGate (AI) — **not** this milestone.

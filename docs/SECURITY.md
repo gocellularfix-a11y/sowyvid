@@ -76,7 +76,38 @@ dev server only. No remote script or style origins.
   IDs (`media_<64hex>`) belonging to the requested project, restricted to that
   project's `media/` directory with a path-traversal guard (`resolveManagedMediaPath`).
   Invalid IDs and traversal attempts return 404 (unit-tested).
+  The handler also honors single **byte ranges** (206 + `Content-Range`), which live
+  video seeking requires; range parsing is pure and unit-tested, and multi-range
+  degrades to a full 200 rather than being answered incorrectly.
 - No shell strings are built from user input; no arbitrary command execution.
+
+### Render-time media access (implemented — see MP4-EXPORT.md)
+
+The export does **not** run inside Electron: `@remotion/renderer` drives its own
+headless Chrome, which has no `sowyvid-media://` scheme. Rewriting media to
+`file://` would have put real filesystem paths into the composition props,
+defeating the controlled protocol. Instead each render starts an **ephemeral
+loopback server** (`src/features/render/mediaServer.node.ts`) with the same
+guarantees plus render-specific containment:
+
+- assets addressed by **stable ID only**, resolved through the same
+  `resolveManagedMediaPath` traversal guard; anything else → 404
+- bound to **127.0.0.1** on an OS-assigned port — never reachable off-machine
+- a **per-render random token** in every URL; stale or guessed URLs 404
+- **closed on every exit path** (success, failure, cancel)
+
+No filesystem path enters the composition props at any point.
+
+### Render cache deletion (implemented — see RENDER-BUNDLE-CACHE.md)
+
+Refreshing a stale render bundle means deleting a directory, and a delete that
+follows a junction is how a cache refresh destroys the owner's media. On Windows
+a directory junction is trivially created and looks like an ordinary folder.
+`safeRemoveDir` refuses to remove through a symlink/junction (rejected *before*
+resolving), outside the cache root, or the root itself. Verified against **real
+junctions**, with the test first proving the environment can actually create one
+so the guarantee is not vacuously green. The render cache lives under the app's
+`userData`, isolated from all project media.
 
 ## Local-network upload security (designed — see PHONE-IMPORT-ARCHITECTURE.md)
 

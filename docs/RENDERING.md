@@ -1,11 +1,24 @@
 # Rendering (Preview & Export)
 
-> Status: Not yet implemented — design only.
-
-This document describes the planned rendering subsystem for **SowyVid**: in-app preview
-via the Remotion Player and MP4 export via `@remotion/renderer`. Both consume the same
-`ScenePlan` and the same composition components (see `VIDEO-ENGINE.md`) so preview and
-export stay consistent. Contracts only; no code here exists yet.
+> Status: **Both implemented.** Preview is a real Remotion `<Player>` with live
+> video and audio; MP4 export renders through `@remotion/renderer` and is
+> verified to be audible and non-black — but **the "Descargar video" button is
+> not wired yet**.
+>
+> Authoritative documents:
+>
+> - **`docs/REMOTION-PREVIEW.md`** — the `<Player>` preview
+> - **`docs/VIDEO-ENGINE.md`** — live video: trim, short-clip loop/freeze, source audio
+> - **`docs/SOUNDWEAVE-INTEGRATION.md`** — audio planning
+> - **`docs/MP4-EXPORT.md`** — the production render
+> - **`docs/RENDER-BUNDLE-CACHE.md`** — the stale-bundle safeguard (**read this before touching the cache**)
+> - **`docs/AUDIO-VALIDATION.md`** — proving audio is audible, not merely present
+>
+> Preview and export consume the **same composition and the same props**
+> (`src/render/Root.tsx` + `remotionProps.ts` + `remotionAudio.ts`), so they
+> cannot drift. The `ScenePlan` named below is **retired** — the real inputs are
+> the VisualPlan and the AudioPlan. The rest of this document is the original
+> design sketch.
 
 Intended module locations:
 
