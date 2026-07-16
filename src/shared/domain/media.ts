@@ -11,6 +11,27 @@ export const AnalysisStatus = z.enum(['pending', 'processing', 'ready', 'failed'
 export type AnalysisStatus = z.infer<typeof AnalysisStatus>
 
 /**
+ * Owner-supplied notes about a music/audio asset.
+ *
+ * Every field is **entered by the owner** and stored verbatim. SowyVid does not
+ * detect, infer, or assert authorship or licensing for any track — `licenseNote`
+ * is a place for the owner to record what THEY know, not a claim by this app.
+ * An empty field means "not stated", never "cleared for use".
+ */
+export const AudioMetadata = z.object({
+  title: z.string().default(''),
+  creator: z.string().default(''),
+  /** Where it came from, e.g. "Suno (mi cuenta)", "biblioteca propia". */
+  source: z.string().default(''),
+  mood: z.string().default(''),
+  energy: z.string().default(''),
+  /** Free text. Owner-provided only — never auto-filled. */
+  licenseNote: z.string().default(''),
+  tags: z.array(z.string()).default([]),
+})
+export type AudioMetadata = z.infer<typeof AudioMetadata>
+
+/**
  * A media asset that has been imported into managed project storage. `relPath`
  * is relative to the project's media folder so projects stay portable — we never
  * persist an absolute development path into project data.
@@ -37,6 +58,8 @@ export const MediaAsset = z.object({
   thumbRelPath: z.string().nullable(),
   /** Relative path to a generated video poster frame, if any. */
   posterRelPath: z.string().nullable().default(null),
+  /** Owner-entered notes; audio assets only. Null until the owner fills them in. */
+  audioMeta: AudioMetadata.nullable().default(null),
   /** Deeper analysis lifecycle (defaults keep pre-analysis records loadable). */
   analysisStatus: AnalysisStatus.default('pending'),
   /** Safe, owner-hideable diagnostic reason when analysis fails. */

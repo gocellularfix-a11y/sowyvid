@@ -61,6 +61,7 @@ export function recordToAsset(record: MediaRecord): MediaAsset {
     hasAudio: record.hasAudio ?? record.kind === 'audio',
     thumbRelPath: null,
     posterRelPath: null,
+    audioMeta: null,
     analysisStatus: 'pending',
     analysisError: null,
     valid: true,

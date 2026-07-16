@@ -26,6 +26,7 @@ function img(id: string, name: string, w: number, h: number): MediaAsset {
     hasAudio: false,
     thumbRelPath: `thumbnails/${id}.jpg`,
     posterRelPath: null,
+    audioMeta: null,
     analysisStatus: 'ready',
     analysisError: null,
     valid: true,
@@ -69,6 +70,43 @@ export function vid(
     hasAudio: opts.hasAudio ?? false,
     thumbRelPath: `thumbnails/${id}.jpg`,
     posterRelPath: opts.poster === false ? null : `posters/${id}.jpg`,
+    audioMeta: null,
+    analysisStatus: opts.analysisStatus ?? 'ready',
+    analysisError: null,
+    valid: opts.valid ?? true,
+    importedAt: FIXED_TS,
+  }
+}
+
+/** A managed audio asset (music or narration). */
+export function aud(
+  id: string,
+  name: string,
+  opts: {
+    durationSec: number | null
+    mimeType?: string
+    valid?: boolean
+    analysisStatus?: MediaAsset['analysisStatus']
+    audioMeta?: MediaAsset['audioMeta']
+  },
+): MediaAsset {
+  return {
+    id,
+    kind: 'audio',
+    relPath: `media/${id}.mp3`,
+    originalName: name,
+    mimeType: opts.mimeType ?? 'audio/mpeg',
+    hash: `hash_${id}`,
+    bytes: 1_800_000,
+    width: null,
+    height: null,
+    orientation: null,
+    durationSec: opts.durationSec,
+    fps: null,
+    hasAudio: true,
+    thumbRelPath: null,
+    posterRelPath: null,
+    audioMeta: opts.audioMeta ?? null,
     analysisStatus: opts.analysisStatus ?? 'ready',
     analysisError: null,
     valid: opts.valid ?? true,

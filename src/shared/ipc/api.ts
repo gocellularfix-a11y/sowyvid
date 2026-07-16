@@ -5,6 +5,7 @@ import type { CreativeFamilyInfo } from '@features/creative/families'
 import type { SowyvidRendererPlan } from '@features/creative/creativePlanToRenderer'
 import type { MediaImportResult, MediaRemoveResult } from '@features/media/types'
 import type { VisualPlan } from '@features/visual/visualPlan'
+import type { AudioPlan } from '@features/audio/audioPlan'
 
 /**
  * The typed surface exposed to the renderer via the secure preload bridge
@@ -28,6 +29,8 @@ export interface CompiledConceptResult {
   renderPlan: CommercialRenderPlan
   rendererPlan: SowyvidRendererPlan
   visualPlan: VisualPlan
+  /** SoundWeave's decisions for this commercial; carries engine name/version. */
+  audioPlan: AudioPlan
   selection: CreativeSelection
 }
 

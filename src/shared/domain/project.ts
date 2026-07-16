@@ -23,6 +23,12 @@ export type BrandPreferences = z.infer<typeof BrandPreferences>
 export const AudioConfig = z.object({
   musicId: z.string().nullable().default(null),
   narrationEnabled: z.boolean().default(false),
+  /**
+   * Managed audio asset used as narration. SowyVid has no TTS (PromptGate is
+   * deferred), so narration exists only when the owner imports a voice track —
+   * `narrationEnabled` alone can never conjure one.
+   */
+  narrationMediaId: z.string().nullable().default(null),
   /** Use the audio embedded in imported video clips. */
   useSourceAudio: z.boolean().default(false),
   musicVolume: z.number().min(0).max(1).default(0.8),

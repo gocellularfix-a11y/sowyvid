@@ -19,6 +19,7 @@ export default defineConfig({
       ),
       '@jorge-engines/mediavault': resolve('packages/mediavault-engine/src/index.ts'),
       '@jorge-engines/framelogic-visual': resolve('packages/framelogic-visual-engine/src/index.ts'),
+      '@jorge-engines/soundweave-audio': resolve('packages/soundweave-audio-engine/src/index.ts'),
     },
   },
   test: {
@@ -29,6 +30,7 @@ export default defineConfig({
       'packages/northstar-creative-engine/tests/**/*.test.ts',
       'packages/mediavault-engine/tests/**/*.test.ts',
       'packages/framelogic-visual-engine/tests/**/*.test.ts',
+      'packages/soundweave-audio-engine/tests/**/*.test.ts',
     ],
     exclude: ['node_modules', 'out', 'dist', 'e2e'],
     coverage: {

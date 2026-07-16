@@ -10,6 +10,7 @@ import { tileImageUrl } from '../../mediaUrl'
 import { PreviewPlayer } from './PreviewPlayer'
 import type { MediaAsset } from '@shared/domain/media'
 import type { VisualPlan } from '@features/visual/visualPlan'
+import type { AudioPlan } from '@features/audio/audioPlan'
 import { copy } from '../../content/copy'
 import styles from './HomeWorkspace.module.css'
 
@@ -42,6 +43,7 @@ export function HomeWorkspace(): JSX.Element {
   const [gen, setGen] = useState<GenState>('idle')
   const [result, setResult] = useState<CommercialResult | null>(null)
   const [visualPlan, setVisualPlan] = useState<VisualPlan | null>(null)
+  const [audioPlan, setAudioPlan] = useState<AudioPlan | null>(null)
   const [projectId, setProjectId] = useState<string | null>(null)
   const [media, setMedia] = useState<MediaAsset[]>([])
   const [importing, setImporting] = useState(false)
@@ -154,6 +156,7 @@ export function HomeWorkspace(): JSX.Element {
         durationSec: Math.round(compiled.value.renderPlan.durationSec),
       })
       setVisualPlan(compiled.value.visualPlan)
+      setAudioPlan(compiled.value.audioPlan)
       setGen('ready')
     } catch {
       setGen('idle')
@@ -329,7 +332,12 @@ export function HomeWorkspace(): JSX.Element {
           {gen === 'ready' && (
             <>
               {visualPlan && projectId ? (
-                <PreviewPlayer visualPlan={visualPlan} projectId={projectId} media={media} />
+                <PreviewPlayer
+                  visualPlan={visualPlan}
+                  audioPlan={audioPlan}
+                  projectId={projectId}
+                  media={media}
+                />
               ) : (
                 <MediaThumb kind={STYLE_THUMBS[styleId] ?? 'generic'} play className={styles.preview} />
               )}

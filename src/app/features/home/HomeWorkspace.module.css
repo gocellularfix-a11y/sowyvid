@@ -289,6 +289,54 @@
 .playerWrap > * {
   max-height: 420px;
 }
+.audioWarning {
+  margin-top: 10px;
+  padding: 10px 12px;
+  border-radius: var(--radius-md, 8px);
+  background: rgba(255, 180, 60, 0.12);
+  border: 1px solid rgba(255, 180, 60, 0.35);
+  color: #ffd79a;
+  font-size: 13px;
+  line-height: 1.4;
+}
+.audioWarning p {
+  margin: 0;
+}
+.audioWarning p + p {
+  margin-top: 4px;
+}
+.audioControls {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 16px;
+  margin-top: 12px;
+}
+.audioControl {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  font-size: 12px;
+  color: var(--text-dim, #b9b9c6);
+  min-width: 150px;
+}
+.audioControl input[type='range'] {
+  accent-color: var(--brand, #7c5cff);
+}
+.audioControl input:disabled {
+  opacity: 0.4;
+}
+.audioToggle {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 13px;
+  color: var(--text-dim, #b9b9c6);
+  cursor: pointer;
+}
+.audioToggle input:disabled + span {
+  opacity: 0.4;
+}
 .previewEmpty {
   display: flex;
   flex-direction: column;

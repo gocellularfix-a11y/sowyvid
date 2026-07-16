@@ -84,7 +84,7 @@ Status legend: `AVAILABLE` `AUDITED` `READY` `INTEGRATED` `DEFERRED` `BLOCKED` `
 | Adapters | `src/features/visual/` (`frameLogicAdapter`, `visualPlan` contract) |
 | Must not import | React, Remotion, branding, Northstar, SowyVid |
 
-## 4. SoundWeave Audio Engine — **DEFERRED**
+## 4. SoundWeave Audio Engine — ✅ **INTEGRATED**
 
 | Field | Value |
 |---|---|
@@ -95,10 +95,12 @@ Status legend: `AVAILABLE` `AUDITED` `READY` `INTEGRATED` `DEFERRED` `BLOCKED` `
 | Input/Output | `AudioPlan` + scene windows + fps + asset resolver → `AudioMixPlan` (frame-accurate) |
 | Dependencies | `zod` |
 | Test/Build (vault docs) | 1 file / 5 tests PASS · build PASS · 0 vulns |
-| SowyVid phase | **D (audio, after preview stable)** |
-| Integrated | No |
-| Adapter required | `CreativePlan + ProjectAudioSettings → SoundWeave → AudioPlan → Remotion audio adapter` |
-| Must not import | React, Remotion, Electron, filesystem, TTS |
+| **Re-verified here** | its **5 vault tests pass unmodified** under SowyVid's toolchain |
+| SowyVid phase | **D (audio)** |
+| Integrated | ✅ **Yes** — vendored byte-identical; full audit in **`docs/SOUNDWEAVE-INTEGRATION.md`** |
+| Adapter | `project audio prefs + VisualPlan timing + managed audio → src/features/audio → SoundWeave → SowyVid AudioPlan → src/render/remotionAudio.ts → composition` |
+| Must not import | React, Remotion, Electron, filesystem, TTS — **verified: imports `zod` only** |
+| Key limitation | a missing track is dropped **silently** (and collapses the mix to `null` if it was the only one). SowyVid resolves/validates assets itself and carries explicit **missing-track state**. |
 
 ## 5. BridgeDrop LAN Engine — **DEFERRED**
 

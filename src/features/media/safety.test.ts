@@ -34,6 +34,7 @@ function fakeAsset(id: string, relPath: string): MediaAsset {
     hasAudio: false,
     thumbRelPath: null,
     posterRelPath: null,
+    audioMeta: null,
     analysisStatus: 'ready',
     analysisError: null,
     valid: true,

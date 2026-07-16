@@ -17,6 +17,7 @@
     "src/config/**/*.ts",
     "packages/northstar-creative-engine/src/**/*.ts",
     "packages/framelogic-visual-engine/src/**/*.ts",
+    "packages/soundweave-audio-engine/src/**/*.ts",
     "src/render/**/*.ts",
     "src/render/**/*.tsx"
   ],

@@ -39,6 +39,7 @@ Honest, per-feature state. Legend:
 | C | **FrameLogic visual planning** | ✅ | Validated VisualPlan per commercial (art direction, motion, layout, text-safe frames) |
 | C | **Real Remotion Player preview** | ✅ | Step 4 plays the plan with imported media via `sowyvid-media://`; play/pause/seek/duration; missing-media placeholder |
 | C+ | **Live managed-video playback** | ✅ | `<OffthreadVideo>` replaces the poster-only still; trim to scene, plan-defined short-clip loop/freeze, poster as loading/failure fallback, **source audio muted by default**; protocol now honors byte ranges (seeking). Verified with a real ffmpeg clip decoding/playing/seeking in Electron (`docs/VIDEO-ENGINE.md`) |
+| D | **SoundWeave audio planning** | ✅ | Validated, persisted AudioPlan (engine name/version, music, narration, source-audio policy, fades, looping, ducking, **explicit missing-track state**); real audio in the `<Player>` with master/music/narration/source controls; missing audio warns without breaking. Verified with a real mp3 decoding/playing in Electron (`docs/SOUNDWEAVE-INTEGRATION.md`) |
 
 ## Engine vault (Jorge Engine Vault v1.0.0)
 
@@ -50,7 +51,7 @@ per phase.
 | Northstar Creative | `@jorge-engines/northstar-creative` | ✅ **INTEGRATED** | A |
 | MediaVault | `@jorge-engines/mediavault` | ✅ **INTEGRATED** | B (now) |
 | FrameLogic Visual | `@jorge-engines/framelogic-visual` | ✅ **INTEGRATED** | C (visual/render) |
-| SoundWeave Audio | `@jorge-engines/soundweave-audio` | ⬜ DEFERRED | D (audio, next) |
+| SoundWeave Audio | `@jorge-engines/soundweave-audio` | ✅ **INTEGRATED** | D (audio) |
 | BridgeDrop LAN | `@jorge-engines/bridgedrop-lan` | ⬜ DEFERRED | E (phone import) |
 | PromptGate AI | `@jorge-engines/promptgate-ai` | ⬜ DEFERRED | F (AI, last) |
 
@@ -86,8 +87,11 @@ independently re-run here — they will be validated as each is integrated.
 
 - **No MP4 export.** The plan is validated, persisted and previewable, but nothing is
   encoded to a file yet. "Descargar video" is marked unavailable.
-- **No audio at all** — no music, no narration, and source-video audio is deliberately
-  muted. SoundWeave is the next phase.
+- **No music library UI yet** — the AudioPlan resolves `audio.musicId`, but choosing /
+  previewing / replacing a track in the interface is not built. The Suno music brief is
+  likewise not wired into the UI.
+- **No narration source** — the AudioPlan supports imported narration, but SowyVid has
+  no TTS (PromptGate is deferred), so narration exists only if a voice file is imported.
 - Phone upload (`Mi teléfono`) — deferred to BridgeDrop (Phase E), marked unavailable.
 - Real AI (PromptGate, Phase F); social publishing (🔒 blocked).
 

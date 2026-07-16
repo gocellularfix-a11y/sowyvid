@@ -6,6 +6,7 @@ import {
   type SourceAudioPolicy,
   type VideoPlayback,
 } from './videoPlayback'
+import type { CompositionAudio } from './remotionAudio'
 
 // Canonical controlled media URL (mirrors src/app/mediaUrl.ts + mediaProtocol.ts).
 function mediaUrlById(projectId: string, mediaId: string, variant: 'original' | 'poster' | 'thumb'): string {
@@ -60,12 +61,25 @@ export type CommercialCompositionProps = {
   palette: VisualPlan['artDirection']['palette']
   motion: VisualPlan['motion']
   scenes: CompositionScene[]
+  /**
+   * The soundtrack, from `audioPlanToCompositionAudio`. Null → a silent
+   * composition (which is a valid, explicit state — not a failure).
+   * Everything here must stay JSON-serializable: `@remotion/renderer` passes
+   * inputProps through JSON.
+   */
+  audio: CompositionAudio | null
 }
 
 export interface CompositionPropsOptions {
   /**
-   * Source-video audio policy. Omitted → OFF. Only SoundWeave's AudioPlan should
-   * ever turn this on, so no imported clip can start making noise by accident.
+   * The soundtrack. Its `sourceAudio` policy ALSO governs whether imported video
+   * clips play their own audio — one decision, one source of truth, so the
+   * picture and the mix can never disagree about whether source audio is on.
+   */
+  audio?: CompositionAudio | null
+  /**
+   * Source-video audio policy for when there is no AudioPlan yet. Ignored when
+   * `audio` is supplied (the plan wins). Omitted → OFF.
    */
   sourceAudio?: SourceAudioPolicy
 }
@@ -77,7 +91,11 @@ export function visualPlanToCompositionProps(
   options: CompositionPropsOptions = {},
 ): CommercialCompositionProps {
   const byId = new Map(media.map((m) => [m.id, m]))
-  const sourceAudio = options.sourceAudio ?? SOURCE_AUDIO_OFF
+  const audio = options.audio ?? null
+  // The AudioPlan is authoritative when present.
+  const sourceAudio: SourceAudioPolicy = audio
+    ? { enabled: audio.sourceAudio.enabled, volume: audio.sourceAudio.volume }
+    : (options.sourceAudio ?? SOURCE_AUDIO_OFF)
 
   const scenes: CompositionScene[] = plan.scenes.map((scene) => ({
     id: scene.id,
@@ -132,5 +150,6 @@ export function visualPlanToCompositionProps(
     palette: plan.artDirection.palette,
     motion: plan.motion,
     scenes,
+    audio,
   }
 }

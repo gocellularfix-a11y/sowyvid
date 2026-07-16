@@ -16,6 +16,7 @@
     "packages/northstar-creative-engine/src/**/*.ts",
     "packages/mediavault-engine/src/**/*.ts",
     "packages/framelogic-visual-engine/src/**/*.ts",
+    "packages/soundweave-audio-engine/src/**/*.ts",
     "src/features/**/*.ts",
     "src/features/**/*.node.ts",
     "electron.vite.config.ts",

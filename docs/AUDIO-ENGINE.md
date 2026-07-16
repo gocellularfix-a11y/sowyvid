@@ -1,11 +1,26 @@
 # Audio Engine
 
-> Status: Not yet implemented — design only.
-
-This document describes the planned audio subsystem for **SowyVid**. It consumes the
-`ScenePlan` produced by the deterministic rule engine and produces an `AudioPlan` that
-drives both preview (Remotion Player in the renderer) and MP4 export
-(`@remotion/renderer` in a Node process). Contracts only; no code here exists yet.
+> Status: **Implemented via the SoundWeave Audio Engine.** Audio planning is owned
+> by `@jorge-engines/soundweave-audio`; the authoritative documents are:
+>
+> - **`docs/SOUNDWEAVE-INTEGRATION.md`** — the engine audit: real API, contracts,
+>   track/timing model, ducking/loop/fade behavior, and known limitations.
+> - **`docs/MUSIC-GENERATION-PROVIDERS.md`** / **`docs/SUNO-MANUAL-WORKFLOW.md`** — music sourcing.
+> - **`docs/AUDIO-VALIDATION.md`** — how audio is proven to be *audible*, not merely present.
+>
+> Implemented shape:
+>
+> ```
+> project audio prefs + VisualPlan scene timing + managed audio metadata
+>   → src/features/audio/        (SowyVid input adapter: resolves + validates assets)
+>   → SoundWeave resolveAudioMix (decides ALL audio timing)
+>   → SowyVid AudioPlan          (+ engine identity, source-audio policy, missing-track state)
+>   → src/render/remotionAudio.ts (Remotion audio adapter)
+>   → preview AND export composition
+> ```
+>
+> The `ScenePlan` named below is **retired**; the real input is the VisualPlan.
+> The rest of this document is the original design sketch, kept for context.
 
 Intended module locations:
 

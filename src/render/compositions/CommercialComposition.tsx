@@ -1,6 +1,7 @@
 import { useState, type CSSProperties } from 'react'
 import {
   AbsoluteFill,
+  Audio,
   Img,
   Loop,
   Freeze,
@@ -10,6 +11,7 @@ import {
   interpolate,
 } from 'remotion'
 import type { CommercialCompositionProps, CompositionMedia, CompositionScene } from '../remotionProps'
+import { musicVolumeAtFrame, type CompositionAudio } from '../remotionAudio'
 
 /**
  * The SowyVid commercial composition. Renders a VisualPlan (via composition
@@ -230,10 +232,58 @@ function SceneView({
   )
 }
 
+/**
+ * The commercial's soundtrack. Every timing decision here came from SoundWeave
+ * via the AudioPlan; this component only mounts elements.
+ */
+function CommercialAudio({ audio }: { audio: CompositionAudio }): JSX.Element | null {
+  if (audio.silent) return null
+  return (
+    <>
+      {audio.music ? (
+        <Audio
+          src={audio.music.url}
+          trimBefore={audio.music.trimStartFrame}
+          loop={audio.music.loop}
+          // REQUIRED with loop: Remotion resets useCurrentFrame() on each loop
+          // iteration, so the default ("repeat") would re-run the fade-out every
+          // pass and evaluate ducking at the wrong frame. "extend" gives the
+          // volume function the continuous timeline frame it expects.
+          loopVolumeCurveBehavior="extend"
+          volume={(f) => musicVolumeAtFrame(f, audio)}
+        />
+      ) : null}
+
+      {audio.narration.map((track, i) => (
+        <Sequence
+          key={`narration-${i}`}
+          from={track.startFrame}
+          durationInFrames={track.durationInFrames}
+          layout="none"
+        >
+          <Audio src={track.url} trimBefore={track.trimStartFrame} volume={track.volume * audio.masterVolume} />
+        </Sequence>
+      ))}
+
+      {audio.effects.map((track, i) => (
+        <Sequence
+          key={`effect-${i}`}
+          from={track.startFrame}
+          durationInFrames={track.durationInFrames}
+          layout="none"
+        >
+          <Audio src={track.url} trimBefore={track.trimStartFrame} volume={track.volume * audio.masterVolume} />
+        </Sequence>
+      ))}
+    </>
+  )
+}
+
 export function CommercialComposition(props: CommercialCompositionProps): JSX.Element {
-  const { scenes, width, brandColors, motion } = props
+  const { scenes, width, brandColors, motion, audio } = props
   return (
     <AbsoluteFill style={{ background: DARK, fontFamily: 'Inter, Segoe UI, sans-serif' }}>
+      {audio ? <CommercialAudio audio={audio} /> : null}
       {scenes.map((scene) => (
         <Sequence key={scene.id} from={scene.from} durationInFrames={scene.durationInFrames}>
           <AbsoluteFill style={{ background: sceneBackground(scene, brandColors) }}>
