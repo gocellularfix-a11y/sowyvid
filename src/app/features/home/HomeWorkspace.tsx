@@ -5,6 +5,7 @@ import { TextArea } from '../../ui/TextInput'
 import { StepBadge } from '../../ui/Primitives'
 import { MediaThumb, type ThumbKind } from '../../ui/MediaThumb'
 import { useToast } from '../../ui/toastContext'
+import { getBridge } from '../../bridge'
 import { copy } from '../../content/copy'
 import styles from './HomeWorkspace.module.css'
 
@@ -16,26 +17,70 @@ const STYLE_THUMBS: Record<string, ThumbKind> = {
   'before-after': 'storefront',
 }
 
+/** Maps the three visible styles to Northstar creative families. */
+const STYLE_FAMILY: Record<string, string> = {
+  direct: 'fast_retail',
+  trust: 'trust_craft',
+  'before-after': 'before_after',
+}
+
+interface CommercialResult {
+  scenes: number
+  durationSec: number
+}
+
 export function HomeWorkspace(): JSX.Element {
   const toast = useToast()
   const [description, setDescription] = useState('')
   const [styleId, setStyleId] = useState<string>(copy.step3.styles[0].id)
   const [gen, setGen] = useState<GenState>('idle')
+  const [result, setResult] = useState<CommercialResult | null>(null)
 
   const canGenerate = description.trim().length > 0
 
   const soon = () => toast.show(copy.common.unavailableHint, 'info')
 
-  const generate = () => {
+  /**
+   * Drives the REAL Northstar creative engine through the secure bridge:
+   * create project → develop concepts → compile the selected style → persist.
+   * In Electron this crosses IPC to the main process + SQLite; in browser
+   * preview it runs the isomorphic engine in-memory. This is not yet a rendered
+   * video — the Remotion renderer (FrameLogic phase) is still deferred.
+   */
+  const generate = async (): Promise<void> => {
     if (!canGenerate) {
       toast.show('Escribe primero qué quieres promocionar.', 'info')
       return
     }
     setGen('generating')
-    // Local UI-shell preview simulation. This is NOT a real render — the
-    // deterministic engine + Remotion render land in later phases. The loading
-    // and ready states are wired so the interface is honestly testable now.
-    window.setTimeout(() => setGen('ready'), 1200)
+    try {
+      const bridge = getBridge()
+      const created = await bridge.projects.create({
+        name: description.trim().slice(0, 60) || 'Comercial',
+        brief: { productOrService: description.trim() },
+      })
+      if (!created.ok) throw new Error(created.error.message)
+      const projectId = created.value.id
+
+      const concepts = await bridge.engine.developConcepts({ projectId, count: 5 })
+      if (!concepts.ok || concepts.value.length === 0) throw new Error('No concepts')
+
+      const wantedFamily = STYLE_FAMILY[styleId]
+      const chosen =
+        concepts.value.find((c) => c.family === wantedFamily) ?? concepts.value[0]!
+
+      const compiled = await bridge.engine.compile({ projectId, conceptId: chosen.conceptId })
+      if (!compiled.ok) throw new Error(compiled.error.message)
+
+      setResult({
+        scenes: compiled.value.renderPlan.scenes.length,
+        durationSec: Math.round(compiled.value.renderPlan.durationSec),
+      })
+      setGen('ready')
+    } catch {
+      setGen('idle')
+      toast.show('No pudimos crear el comercial. Intenta de nuevo.', 'error')
+    }
   }
 
   return (
@@ -167,6 +212,11 @@ export function HomeWorkspace(): JSX.Element {
                 play
                 className={styles.preview}
               />
+              {result && (
+                <p className={styles.stepSubtitle} data-testid="commercial-summary">
+                  Comercial creado: {result.scenes} escenas · {result.durationSec}s
+                </p>
+              )}
               <div className={styles.resultActions}>
                 <Button block leftIcon="download" onClick={soon}>
                   {copy.step4.download}

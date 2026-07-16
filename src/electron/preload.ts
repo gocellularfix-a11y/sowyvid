@@ -19,11 +19,10 @@ const bridge: SowyvidBridge = {
     save: (project) => ipcRenderer.invoke(IPC.ProjectUpdate, project),
     delete: (id) => ipcRenderer.invoke(IPC.ProjectDelete, id),
   },
-  templates: {
-    list: () => ipcRenderer.invoke(IPC.TemplateList),
-  },
-  plan: {
-    generate: (input) => ipcRenderer.invoke(IPC.PlanGenerate, input),
+  engine: {
+    families: () => ipcRenderer.invoke(IPC.EngineFamilies),
+    developConcepts: (input) => ipcRenderer.invoke(IPC.EngineDevelopConcepts, input),
+    compile: (input) => ipcRenderer.invoke(IPC.EngineCompile, input),
   },
   on: (channel, listener) => {
     const allowed = new Set<string>([IPC.RenderProgress, IPC.PhoneSessionStatus])

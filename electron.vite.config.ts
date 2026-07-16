@@ -9,7 +9,11 @@ const alias = {
   '@features': resolve('src/features'),
   '@database': resolve('src/database'),
   '@render': resolve('src/render'),
-  '@rules': resolve('src/rules'),
+  '@config': resolve('src/config'),
+  '@jorge-engines/northstar-creative/remotion': resolve(
+    'packages/northstar-creative-engine/src/adapters/remotion.ts',
+  ),
+  '@jorge-engines/northstar-creative': resolve('packages/northstar-creative-engine/src/index.ts'),
 }
 
 export default defineConfig({

@@ -19,12 +19,10 @@ export const IPC = {
   ProjectListVersions: 'project:listVersions',
   ProjectRestoreVersion: 'project:restoreVersion',
 
-  // Templates (Phase 5)
-  TemplateList: 'template:list',
-  TemplateGet: 'template:get',
-
-  // Scene planning (Phase 5)
-  PlanGenerate: 'plan:generate',
+  // Creative engine (deterministic-creative-engine v2)
+  EngineFamilies: 'engine:families',
+  EngineDevelopConcepts: 'engine:developConcepts',
+  EngineCompile: 'engine:compile',
 
   // Media (Phase 6)
   MediaImport: 'media:import',

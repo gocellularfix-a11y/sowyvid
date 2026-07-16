@@ -38,19 +38,27 @@ navigation/window-open locked down, all IPC input Zod-validated.
 ## Source layout
 
 ```
+packages/
+  northstar-creative-engine/   vendored generic engine (@jorge-engines/northstar-creative)
 src/
   app/            renderer (React): shell/, features/, ui/, content/, styles/
   electron/       main process: main.ts, preload.ts, paths.ts, ipc/
   shared/         cross-process: ipc contracts, Result type, domain types
-  features/       domain logic (projects, templates, media, …) — node + shared
-  database/       Database port + sql.js adapter + migrations  (Phase 4)
-  rules/          deterministic commercial rule engine          (Phase 5)
-  render/         Remotion compositions + render service         (Phase 7–9)
+  config/         branding.ts — single product-identity source
+  features/       domain logic + engine adapters (features/creative/, …)
+  database/       Database port + sql.js adapter + migrations
+  render/         Remotion compositions + render service          (deferred)
 ```
 
 Path aliases (`@shared`, `@app`, `@electron`, `@features`, `@database`,
-`@render`, `@rules`) are defined identically in `tsconfig.base.json`,
-`electron.vite.config.ts`, `vite.renderer.config.ts`, and `vitest.config.ts`.
+`@render`, `@config`, `@jorge-engines/northstar-creative`) are defined identically
+in `tsconfig.base.json`, `electron.vite.config.ts`, `vite.renderer.config.ts`, and
+`vitest.config.ts`.
+
+**Creative engine.** Deterministic creative planning is the **Northstar Creative
+Engine** (vendored under `packages/`), consumed only through
+`src/features/creative/` adapters. The engine is brand/renderer/framework-neutral.
+See `docs/CREATIVE-ENGINE-INTEGRATION.md` and `docs/ENGINE-INTEGRATION-ARCHITECTURE.md`.
 
 ## Typed IPC contract
 

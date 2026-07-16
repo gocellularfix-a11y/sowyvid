@@ -1,89 +1,97 @@
 # SowyVid — Current Status
 
-Honest, per-feature state as of this milestone. Legend:
+Honest, per-feature state. Legend:
 
 - ✅ **Complete** — implemented and verified (tests and/or real-app run).
 - 🟡 **Functional but limited** — works, with scope caveats.
 - 🧩 **Scaffolded** — types/contracts/UI exist; behavior not wired.
-- ⬜ **Not implemented** — design only (see the relevant doc).
+- ⬜ **Not implemented** — design only.
 - 🔒 **Blocked** — needs external credentials/approval.
 
-> Nothing below is described as finished unless it has been tested. Scaffolding is
-> never presented in the UI as a completed feature — unavailable controls say so.
+> Nothing is described as finished unless tested. Scaffolding is never presented in
+> the UI as complete — unavailable controls say "disponible pronto".
 
-## Verification snapshot
+## Verification snapshot (current)
 
 | Check | Result |
 |---|---|
 | `npm run typecheck` | ✅ passes (node + web) |
-| `npm run lint` | ✅ passes, 0 warnings |
-| `npm test` | ✅ 19 passing (engine 11, persistence 8) |
-| `npm run test:e2e` | ✅ 4 passing (renderer smoke) |
+| `npm run lint` | ✅ 0 warnings (`packages/**` vendored engines excluded) |
+| `npm test` | ✅ **38 passing** across 9 files (Northstar 7 files/14 tests + persistence 8 + creative integration 16) |
+| `npm run test:e2e` | ✅ 4 passing (incl. UI→engine end-to-end) |
 | `npm run build` | ✅ succeeds (main + preload + renderer) |
-| Real Electron launch | ✅ boots, creates `%APPDATA%\SowyVid\database\sowyvid.db` |
+| Real Electron launch | ✅ boots; migrated on-disk DB v1→v2 in place; engine IPC handlers live |
 
-## Phase status
+## Core phases
 
 | Phase | Feature | State | Notes |
 |---|---|---|---|
-| 1 | Repo & architecture (electron-vite, secure main/preload, typed IPC) | ✅ | contextIsolation/sandbox on, Zod-validated IPC, app boots |
-| 2 | Mockup analysis & design system | ✅ | `docs/MOCKUP-ANALYSIS.md`; tokens + primitives |
-| 3 | Interface shell (mockup-faithful) | ✅ | Header, sidebar, 4-step flow, style cards, trust bar; states wired; screenshot-verified |
-| 4 | Project persistence (SQLite/Zod/migrations/history) | ✅ | sql.js behind a port; atomic writes; restart-survival tested |
-| 5 | Templates & deterministic engine | ✅ | 6 distinct templates; reproducible `ScenePlan`; 11 tests |
-| — | IPC for projects/templates/plan | ✅ | Wired through preload; main handlers implemented |
-| 6 | Local media library / import pipeline | ⬜ | `docs/MEDIA-PIPELINE.md`; UI sources marked "disponible pronto" |
-| 7 | Remotion preview | ⬜ | `docs/RENDERING.md`; Step-4 preview is a UI simulation, clearly labeled |
-| 8 | Audio engine + music library | ⬜ | `docs/AUDIO-ENGINE.md` |
-| 9 | MP4 rendering (H.264) | ⬜ | `docs/RENDERING.md`; "Descargar video" marked unavailable |
-| 10 | Local phone upload (LAN) | ⬜ | `docs/PHONE-IMPORT-ARCHITECTURE.md`; "Mi teléfono" marked unavailable |
-| 11 | AI gateway + cost controls | 🧩 | `docs/AI-COST-CONTROL.md`; `mockAiActive` flag exposed; gateway not built |
-| 12 | Social publishing adapters | ⬜🔒 | `docs/SOCIAL-CONNECTOR-ARCHITECTURE.md`; blocked on OAuth/app review |
-| 13 | Vertical-slice QA | 🟡 | Persistence + engine + UI slices tested; full end-to-end awaits phases 6–9 |
-| 14 | Documentation & audit | ✅ | All docs present; this file is the source of truth |
+| 1 | Repo & architecture (secure Electron, typed IPC) | ✅ | contextIsolation/sandbox; Zod-validated IPC |
+| 2 | Mockup analysis & design system | ✅ | `docs/MOCKUP-ANALYSIS.md` |
+| 3 | Interface shell (mockup-faithful) | ✅ | 4-step guided flow; screenshot-verified |
+| 4 | Project persistence (SQLite/Zod/migrations/history) | ✅ | sql.js port; atomic writes; **migration v2**; restart-survival tested |
+| A | **Northstar Creative Engine integration** | ✅ | Canonical creative brain; app uses it UI→IPC→persist; 30 tests |
+| — | Branding decoupled | ✅ | `src/config/branding.ts` single source; `docs/BRANDING.md` |
 
-## What actually works end-to-end today
+## Engine vault (Jorge Engine Vault v1.0.0)
 
-- Launch the app; the mockup interface renders with the guided 4-step flow.
-- Navigate between Inicio / Mis comerciales / Material.
-- Create/save/list/delete projects with full validation and **atomic, restart-safe
-  persistence** (via IPC in the app; via an in-memory mock in browser-preview).
-- Generate a **deterministic scene plan** from any of the 6 templates (the engine
-  runs both in the main process and — because it's isomorphic — in browser preview).
-- Project/template/engine versions are persisted for reproducibility.
+Audited in full; catalog at `docs/ENGINE-VAULT-CATALOG.md`. One engine integrated
+per phase.
 
-## What does NOT work yet (and is not pretended to)
+| Engine | Package | State | Phase |
+|---|---|---|---|
+| Northstar Creative | `@jorge-engines/northstar-creative` | ✅ **INTEGRATED** | A (now) |
+| MediaVault | `@jorge-engines/mediavault` | ⬜ DEFERRED | B (media import) |
+| FrameLogic Visual | `@jorge-engines/framelogic-visual` | ⬜ DEFERRED | C (visual/render) |
+| SoundWeave Audio | `@jorge-engines/soundweave-audio` | ⬜ DEFERRED | D (audio) |
+| BridgeDrop LAN | `@jorge-engines/bridgedrop-lan` | ⬜ DEFERRED | E (phone import) |
+| PromptGate AI | `@jorge-engines/promptgate-ai` | ⬜ DEFERRED | F (AI, last) |
 
-- Importing real media, generating thumbnails, or reading media metadata.
-- Playing a real Remotion preview or rendering an MP4.
-- Any audio, phone upload, real AI calls, or social publishing.
-- The Step-4 "preview" and "Descargar video" in the shell are a **simulation** /
-  marked-unavailable action, not a real render.
+**Honest audit note:** the vault's own isolated `npm install` failed in this
+environment (`Exit handler never called!`), so its native `tsc`/`vitest` could not
+be reproduced here; `npm audit` reported **0 vulnerabilities**. Northstar was
+verified under SowyVid's toolchain (its 7 test files pass). The other five engines'
+results are taken from the vault's documented validation and have **not** been
+independently re-run here — they will be validated as each is integrated.
+
+## What works end-to-end today
+
+- Launch the app; the mockup interface renders; navigate sections.
+- Create/save/list/delete projects with atomic, **restart-safe** persistence.
+- **Choose a style → generate a real commercial plan**: the Home workflow creates a
+  project, develops Northstar concepts for the selected family, compiles a validated
+  `CommercialRenderPlan`, persists the reproducible selection, and shows the real
+  plan summary (scene count · duration). Runs through IPC+SQLite in Electron and via
+  the isomorphic engine in browser preview.
+- Deterministic guarantee: identical inputs + seed → byte-identical plans (tested).
+
+## What does NOT work yet (not pretended to)
+
+- No rendered video — the Remotion renderer (FrameLogic phase) is deferred; the plan
+  is validated + persisted but not drawn to frames. "Descargar video" is marked
+  unavailable.
+- Real media import, thumbnails, metadata (MediaVault, Phase B).
+- Audio, phone upload, real AI, social publishing (Phases D–F; social 🔒 blocked).
 
 ## Known issues / caveats
 
-1. **sql.js vs. better-sqlite3.** Chosen deliberately for build reliability
-   (see `docs/DATABASE.md`); write-through persists the whole DB each mutation —
-   fine at expected project counts, revisit if libraries grow very large.
-2. **Fonts** use a system stack (no bundled/remote font) — a deliberate offline/CSP
-   choice; premium on Windows via Segoe UI Variable.
-3. **Brand mark** intentionally deviates from the mockup's hummingbird (that was
-   Colibrí's identity); SowyVid ships a new swift mark. Documented in the mockup
-   analysis.
-4. **Platform coverage** verified on Windows only.
-5. **AI** shows a mock-active flag; no real provider is wired, and mock output is
-   never presented as real intelligence.
+1. sql.js over native `better-sqlite3` (build reliability; `docs/DATABASE.md`).
+2. Vendored engines consume **source** via alias (vendor-copy strategy) rather than
+   a separate npm-workspace build — the vault's TS 7 / vitest 3-4 toolchain fails to
+   install here (`docs/ENGINE-INTEGRATION-ARCHITECTURE.md`).
+3. Media has no semantic roles/tags until MediaVault; placement uses orientation +
+   quality scoring.
+4. Provisional brand — not for public release (`docs/BRANDING.md`).
+5. AI shows a mock-active flag; no real provider wired.
 
 ## Blocked items
 
-- **Real social publishing** — requires official Instagram/Facebook/TikTok/YouTube
-  API access, approved applications, OAuth credentials, and platform review. Until
-  then SowyVid will export valid, platform-ready media (manual fallback). No fake
-  "published successfully".
+- Real social publishing — needs official platform APIs, approved apps, OAuth, and
+  review. SowyVid will export platform-ready media instead. No fake "published".
 
 ## Recommended next step
 
-Implement **Phase 6 (local media import) → Phase 7 (Remotion preview of the scene
-plan)**: this turns the already-working deterministic engine into something the
-owner can *see*, which is the single biggest jump in real value toward the first
-publish-ready commercial.
+**Phase B — integrate MediaVault** (real media import: magic-byte validation,
+SHA-256 content IDs, dedup, managed byte-copy storage). It gives Northstar real
+media metadata to assign and unblocks the first genuinely media-driven commercial,
+which is the biggest remaining jump toward a publish-ready result.

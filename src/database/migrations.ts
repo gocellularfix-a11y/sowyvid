@@ -48,6 +48,18 @@ export const MIGRATIONS: Migration[] = [
       CREATE INDEX idx_exports_project ON export_history(project_id, created_at DESC);
     `,
   },
+  {
+    version: 2,
+    name: 'creative-selection-columns',
+    // Northstar creative-engine integration. Non-destructive: existing rows get
+    // NULL for the new columns and continue to load (full project data lives in
+    // the JSON `data` column; these are indexed conveniences for reproducibility).
+    up: `
+      ALTER TABLE projects ADD COLUMN concept_id TEXT;
+      ALTER TABLE projects ADD COLUMN seed TEXT;
+      CREATE INDEX idx_projects_concept ON projects(concept_id);
+    `,
+  },
 ]
 
 /**

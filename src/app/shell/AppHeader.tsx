@@ -1,5 +1,6 @@
 import { SowyvidMark, Icon } from '../ui/Icon'
 import { copy } from '../content/copy'
+import { branding } from '@config/branding'
 import styles from './AppHeader.module.css'
 
 interface AppHeaderProps {
@@ -12,7 +13,7 @@ export function AppHeader({ onHelp, onSettings }: AppHeaderProps): JSX.Element {
     <header className={styles.header}>
       <div className={styles.brand}>
         <SowyvidMark size={30} />
-        <span className={styles.wordmark}>{copy.brand}</span>
+        <span className={styles.wordmark}>{branding.productName}</span>
       </div>
       <div className={styles.actions}>
         <button className={styles.textAction} onClick={onHelp} type="button">

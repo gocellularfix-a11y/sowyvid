@@ -12,7 +12,9 @@
     "src/database/**/*.ts",
     "src/render/**/*.ts",
     "src/shared/**/*.ts",
-    "src/rules/**/*.ts",
+    "src/config/**/*.ts",
+    "packages/northstar-creative-engine/src/**/*.ts",
+    "src/features/**/*.ts",
     "src/features/**/*.node.ts",
     "electron.vite.config.ts",
     "scripts/**/*.mjs"

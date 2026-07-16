@@ -58,9 +58,32 @@ export const CommercialBrief = z.object({
 export type CommercialBrief = z.infer<typeof CommercialBrief>
 
 /**
+ * The deterministic creative-engine selection persisted with a project once a
+ * concept is compiled. Storing engineVersion + family/variant/concept + seed +
+ * inputFingerprint keeps the chosen commercial reproducible even after the
+ * engine evolves. `null` until the owner compiles a concept.
+ *
+ * Note the four distinct concepts (see docs/CREATIVE-ENGINE-INTEGRATION.md):
+ * a **creative family** = persuasive narrative structure; a **visual template**
+ * (`templateId`) = visual execution; a **motion profile** = movement; the
+ * renderer turns the plan into frames. They are never collapsed into one object.
+ */
+export const CreativeSelection = z.object({
+  engineVersion: z.string().min(1),
+  family: z.string().min(1),
+  variantId: z.string().min(1),
+  conceptId: z.string().min(1),
+  seed: z.string().min(1),
+  inputFingerprint: z.string().min(1),
+  targetDurationSec: z.number().positive(),
+})
+export type CreativeSelection = z.infer<typeof CreativeSelection>
+
+/**
  * The complete persisted project. Survives restart; validated with Zod at every
- * boundary. `ruleEngineVersion` + `templateVersion` are stored so a generated
- * plan stays reproducible even after the engine/template evolve.
+ * boundary. Unknown legacy keys (e.g. the retired `templateVersion` /
+ * `ruleEngineVersion`) are stripped on read, so pre-integration projects still
+ * load — `creative` simply defaults to null.
  */
 export const Project = z.object({
   id: z.string(),
@@ -71,9 +94,10 @@ export const Project = z.object({
   audio: AudioConfig,
   render: RenderConfig,
   targetPlatform: Platform.default('instagram-reel'),
+  /** Selected VISUAL template (execution style) — distinct from the creative family. */
   templateId: z.string().nullable().default(null),
-  templateVersion: z.number().int().positive().nullable().default(null),
-  ruleEngineVersion: z.number().int().positive().nullable().default(null),
+  /** Deterministic creative-engine selection; null until a concept is compiled. */
+  creative: CreativeSelection.nullable().default(null),
   media: z.array(MediaAsset).default([]),
   status: ProjectStatus.default('draft'),
   createdAt: z.string().datetime(),

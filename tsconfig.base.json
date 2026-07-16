@@ -25,7 +25,11 @@
       "@features/*": ["src/features/*"],
       "@database/*": ["src/database/*"],
       "@render/*": ["src/render/*"],
-      "@rules/*": ["src/rules/*"]
+      "@config/*": ["src/config/*"],
+      "@jorge-engines/northstar-creative": ["packages/northstar-creative-engine/src/index.ts"],
+      "@jorge-engines/northstar-creative/remotion": [
+        "packages/northstar-creative-engine/src/adapters/remotion.ts"
+      ]
     }
   }
 }

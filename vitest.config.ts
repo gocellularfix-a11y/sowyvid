@@ -10,18 +10,32 @@ export default defineConfig({
       '@features': resolve('src/features'),
       '@database': resolve('src/database'),
       '@render': resolve('src/render'),
-      '@rules': resolve('src/rules'),
+      '@config': resolve('src/config'),
+      '@jorge-engines/northstar-creative/remotion': resolve(
+        'packages/northstar-creative-engine/src/adapters/remotion.ts',
+      ),
+      '@jorge-engines/northstar-creative': resolve(
+        'packages/northstar-creative-engine/src/index.ts',
+      ),
     },
   },
   test: {
     globals: true,
     environment: 'node',
-    include: ['src/**/*.{test,spec}.ts'],
+    include: [
+      'src/**/*.{test,spec}.ts',
+      'packages/northstar-creative-engine/tests/**/*.test.ts',
+    ],
     exclude: ['node_modules', 'out', 'dist', 'e2e'],
     coverage: {
       provider: 'v8',
       reporter: ['text', 'html'],
-      include: ['src/rules/**', 'src/database/**', 'src/shared/**', 'src/features/**'],
+      include: [
+        'packages/northstar-creative-engine/src/**',
+        'src/database/**',
+        'src/shared/**',
+        'src/features/**',
+      ],
     },
   },
 })

@@ -3,10 +3,11 @@ import { join } from 'node:path'
 import { registerHandlers } from './ipc/registerHandlers'
 import { getAppPaths } from './paths'
 import { openPersistentDatabase, ProjectRepository } from '@database/index'
+import { branding } from '@config/branding'
 
-// SowyVid brands the app and its app-data folder explicitly, independent of the
-// package name, so user data lives under a stable "SowyVid" directory.
-app.setName('SowyVid')
+// Brand the app and its app-data folder from the single branding config,
+// independent of the package name, so user data lives under a stable directory.
+app.setName(branding.dataDirectoryName)
 
 const isDev = !app.isPackaged
 const RENDERER_DEV_URL = process.env.ELECTRON_RENDERER_URL
@@ -19,7 +20,7 @@ function createMainWindow(): BrowserWindow {
     minHeight: 720,
     show: false,
     backgroundColor: '#0a0a0f',
-    title: 'SowyVid',
+    title: branding.windowTitle,
     autoHideMenuBar: true,
     webPreferences: {
       preload: join(import.meta.dirname, '../preload/index.cjs'),

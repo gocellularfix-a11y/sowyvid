@@ -1,0 +1,43 @@
+{
+  "name": "@jorge-engines/northstar-creative",
+  "version": "1.0.0",
+  "description": "Renderer-neutral deterministic creative planning engine with multilingual classification and seeded variation.",
+  "private": false,
+  "type": "module",
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js"
+    },
+    "./remotion": {
+      "types": "./dist/adapters/remotion.d.ts",
+      "import": "./dist/adapters/remotion.js"
+    }
+  },
+  "files": [
+    "dist",
+    "README.md",
+    "MIGRATION.md"
+  ],
+  "scripts": {
+    "build": "tsc -p tsconfig.build.json",
+    "typecheck": "tsc -p tsconfig.json --noEmit",
+    "test": "vitest run --pool=forks --maxWorkers=1",
+    "test:watch": "vitest",
+    "check": "npm run typecheck && npm run test && npm run build"
+  },
+  "engines": {
+    "node": ">=20"
+  },
+  "dependencies": {
+    "zod": "^3.24.1"
+  },
+  "devDependencies": {
+    "typescript": "^5.8.3",
+    "vitest": "^3.2.4",
+    "@types/node": "^24.0.0"
+  },
+  "license": "UNLICENSED"
+}

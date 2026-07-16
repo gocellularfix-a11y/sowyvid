@@ -10,6 +10,9 @@ export default tseslint.config(
       'dist/**',
       'release/**',
       'node_modules/**',
+      // Vendored generic engine packages keep their own conventions; the app
+      // consumes them through adapters, not by re-styling their source.
+      'packages/**',
       'coverage/**',
       'playwright-report/**',
       'test-results/**',

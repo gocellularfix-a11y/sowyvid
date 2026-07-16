@@ -1,21 +1,31 @@
 import type { Result } from '../result'
-import type { Project, CreateProjectInput } from '../domain/project'
-import type { Template } from '../domain/template'
-import type { ScenePlan } from '../domain/scenePlan'
+import type { Project, CreateProjectInput, CreativeSelection } from '../domain/project'
+import type { CreativePlan, CommercialRenderPlan } from '@jorge-engines/northstar-creative'
+import type { CreativeFamilyInfo } from '@features/creative/families'
+import type { SowyvidRendererPlan } from '@features/creative/creativePlanToRenderer'
 
 /**
  * The typed surface exposed to the renderer via the secure preload bridge
  * (`window.sowyvid`). This is the ONLY way the renderer talks to the main
  * process — there is no generic `ipcRenderer` access in the renderer.
+ *
+ * The `engine` namespace fronts the deterministic creative engine
+ * (deterministic-creative-engine v2) through app-side adapters.
  */
 
 export interface AppInfo {
-  name: 'SowyVid'
+  name: string
   version: string
   platform: NodeJS.Platform
   userDataPath: string
   mockAiActive: boolean
   mode: 'development' | 'production'
+}
+
+export interface CompiledConceptResult {
+  renderPlan: CommercialRenderPlan
+  rendererPlan: SowyvidRendererPlan
+  selection: CreativeSelection
 }
 
 export interface SowyvidBridge {
@@ -30,12 +40,13 @@ export interface SowyvidBridge {
     save(project: Project): Promise<Result<Project>>
     delete(id: string): Promise<Result<boolean>>
   }
-  templates: {
-    list(): Promise<Result<Template[]>>
-  }
-  plan: {
-    /** Generate a deterministic scene plan for a project + template. */
-    generate(input: { projectId: string; templateId: string }): Promise<Result<ScenePlan>>
+  engine: {
+    /** Owner-facing creative families for the "choose your style" step. */
+    families(): Promise<Result<CreativeFamilyInfo[]>>
+    /** Develop N ranked, deterministic creative concepts for a project. */
+    developConcepts(input: { projectId: string; count: number }): Promise<Result<CreativePlan[]>>
+    /** Compile a chosen concept into a validated render plan; persists selection. */
+    compile(input: { projectId: string; conceptId: string }): Promise<Result<CompiledConceptResult>>
   }
   /** Subscribe to a main-process event channel; returns an unsubscribe fn. */
   on(channel: string, listener: (payload: unknown) => void): () => void

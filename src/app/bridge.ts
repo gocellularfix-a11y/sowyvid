@@ -1,5 +1,5 @@
 import { nanoid } from 'nanoid'
-import type { SowyvidBridge, AppInfo } from '@shared/ipc/api'
+import type { SowyvidBridge, AppInfo, CompiledConceptResult } from '@shared/ipc/api'
 import { ok, err, type Result } from '@shared/result'
 import {
   Project,
@@ -10,15 +10,22 @@ import {
   AudioConfig,
   RenderConfig,
 } from '@shared/domain/project'
-import { listTemplates, getTemplate, generateScenePlan } from '@rules/index'
+import {
+  developProjectConcepts,
+  compileProjectConcept,
+  toRendererPlan,
+  projectAssetResolver,
+  listCreativeFamilies,
+} from '@features/creative'
+import { branding } from '@config/branding'
 
 /**
  * Resolves the Electron bridge. In plain-browser preview mode (Playwright smoke
  * test, `npm run dev:renderer-only`) `window.sowyvid` is absent, so we return a
- * clearly-marked mock. Because the template engine and domain schemas are
- * isomorphic (pure, no Node APIs), templates and scene-plan generation are the
- * REAL implementations here; only project storage is in-memory (not persisted),
- * and the UI shows a "preview mode" banner so this is never mistaken for the app.
+ * clearly-marked mock. Because the Northstar engine and its adapters are
+ * isomorphic (pure, no Node APIs), family listing, concept development and
+ * compilation are the REAL implementations here; only project storage is
+ * in-memory (not persisted), and the UI shows a "preview mode" banner.
  */
 const BROWSER_PREVIEW = typeof window !== 'undefined' && !window.sowyvid
 
@@ -30,7 +37,7 @@ function createMockBridge(): SowyvidBridge {
       info: (): Promise<Result<AppInfo>> =>
         Promise.resolve(
           ok({
-            name: 'SowyVid',
+            name: branding.productName,
             version: '0.1.0-preview',
             platform: 'browser' as NodeJS.Platform,
             userDataPath: '(browser preview — no filesystem)',
@@ -43,9 +50,7 @@ function createMockBridge(): SowyvidBridge {
     projects: {
       list: () =>
         Promise.resolve(
-          ok(
-            [...store.values()].sort((a, b) => b.updatedAt.localeCompare(a.updatedAt)),
-          ),
+          ok([...store.values()].sort((a, b) => b.updatedAt.localeCompare(a.updatedAt))),
         ),
       create: (input) => {
         const parsed = CreateProjectInput.parse(input)
@@ -60,8 +65,7 @@ function createMockBridge(): SowyvidBridge {
           render: RenderConfig.parse({}),
           targetPlatform: 'instagram-reel',
           templateId: null,
-          templateVersion: null,
-          ruleEngineVersion: null,
+          creative: null,
           media: [],
           status: 'draft',
           createdAt: ts,
@@ -79,16 +83,26 @@ function createMockBridge(): SowyvidBridge {
       },
       delete: (id) => Promise.resolve(ok(store.delete(id))),
     },
-    templates: {
-      list: () => Promise.resolve(ok(listTemplates())),
-    },
-    plan: {
-      generate: ({ projectId, templateId }) => {
+    engine: {
+      families: () => Promise.resolve(ok(listCreativeFamilies())),
+      developConcepts: ({ projectId, count }) => {
         const project = store.get(projectId)
         if (!project) return Promise.resolve(err('NOT_FOUND', 'Proyecto no encontrado'))
-        const template = getTemplate(templateId)
-        if (!template) return Promise.resolve(err('NOT_FOUND', 'Plantilla no encontrada'))
-        return Promise.resolve(ok(generateScenePlan(project, template)))
+        return Promise.resolve(ok(developProjectConcepts(project, count)))
+      },
+      compile: ({ projectId, conceptId }) => {
+        const project = store.get(projectId)
+        if (!project) return Promise.resolve(err('NOT_FOUND', 'Proyecto no encontrado'))
+        try {
+          const { renderPlan, selection } = compileProjectConcept(project, conceptId)
+          const rendererPlan = toRendererPlan(renderPlan, projectAssetResolver(project))
+          const next = { ...project, creative: selection, updatedAt: new Date().toISOString() }
+          store.set(project.id, next)
+          const result: CompiledConceptResult = { renderPlan, rendererPlan, selection }
+          return Promise.resolve(ok(result))
+        } catch (e) {
+          return Promise.resolve(err('INTERNAL', e instanceof Error ? e.message : String(e)))
+        }
       },
     },
     on: () => () => undefined,

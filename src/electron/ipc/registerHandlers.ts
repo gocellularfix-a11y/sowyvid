@@ -1,12 +1,19 @@
 import { app } from 'electron'
 import { z } from 'zod'
 import { IPC } from '@shared/ipc/channels'
-import { type AppInfo } from '@shared/ipc/api'
+import { type CompiledConceptResult } from '@shared/ipc/api'
 import { Project, CreateProjectInput } from '@shared/domain/project'
-import { ok, err, type Result } from '@shared/result'
-import { generateScenePlan, listTemplates, getTemplate } from '@rules/index'
+import { ok, err } from '@shared/result'
+import {
+  developProjectConcepts,
+  compileProjectConcept,
+  toRendererPlan,
+  projectAssetResolver,
+  listCreativeFamilies,
+} from '@features/creative'
 import type { PersistentDatabase } from '@database/index'
 import { ProjectRepository } from '@database/index'
+import { branding } from '@config/branding'
 import { getAppPaths, projectDir } from '../paths'
 import { mkdirSync } from 'node:fs'
 import { join } from 'node:path'
@@ -29,17 +36,17 @@ export function registerHandlers(ctx: HandlerContext): void {
   const { db, repo } = ctx
 
   // ---- System ----
-  handle(IPC.AppInfo, z.any(), (): Result<AppInfo> =>
+  handle(IPC.AppInfo, z.any(), () =>
     ok({
-      name: 'SowyVid',
+      name: branding.productName,
       version: app.getVersion(),
       platform: process.platform,
       userDataPath: getAppPaths().userData,
       mockAiActive: true,
-      mode: app.isPackaged ? 'production' : 'development',
+      mode: app.isPackaged ? 'production' : ('development' as const),
     }),
   )
-  handle(IPC.Ping, z.string(), (message): Result<string> => ok(`pong: ${message}`))
+  handle(IPC.Ping, z.string(), (message) => ok(`pong: ${message}`))
 
   // ---- Projects ----
   handle(IPC.ProjectList, z.any(), () => ok(repo.list()))
@@ -65,30 +72,39 @@ export function registerHandlers(ctx: HandlerContext): void {
     return ok(existed)
   })
 
-  // ---- Templates ----
-  handle(IPC.TemplateList, z.any(), () => ok(listTemplates()))
+  // ---- Creative engine ----
+  handle(IPC.EngineFamilies, z.any(), () => ok(listCreativeFamilies()))
 
-  // ---- Deterministic scene plan ----
   handle(
-    IPC.PlanGenerate,
-    z.object({ projectId: z.string(), templateId: z.string() }),
-    async ({ projectId, templateId }) => {
+    IPC.EngineDevelopConcepts,
+    z.object({ projectId: z.string(), count: z.number().int().min(1).max(15) }),
+    ({ projectId, count }) => {
       const project = repo.get(projectId)
       if (!project) return err('NOT_FOUND', `Project not found: ${projectId}`)
-      const template = getTemplate(templateId)
-      if (!template) return err('NOT_FOUND', `Template not found: ${templateId}`)
+      return ok(developProjectConcepts(project, count))
+    },
+  )
 
-      const plan = generateScenePlan(project, template)
-      // Persist the versions used so this project stays reproducible.
+  handle(
+    IPC.EngineCompile,
+    z.object({ projectId: z.string(), conceptId: z.string() }),
+    async ({ projectId, conceptId }) => {
+      const project = repo.get(projectId)
+      if (!project) return err('NOT_FOUND', `Project not found: ${projectId}`)
+
+      const { renderPlan, selection } = compileProjectConcept(project, conceptId)
+      const rendererPlan = toRendererPlan(renderPlan, projectAssetResolver(project))
+
+      // Persist the reproducible selection so the concept survives restart.
       repo.save({
         ...project,
-        templateId: template.id,
-        templateVersion: template.version,
-        ruleEngineVersion: plan.engineVersion,
+        creative: selection,
         status: project.status === 'draft' ? 'planned' : project.status,
       })
       await db.persist()
-      return ok(plan)
+
+      const result: CompiledConceptResult = { renderPlan, rendererPlan, selection }
+      return ok(result)
     },
   )
 }

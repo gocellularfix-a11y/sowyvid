@@ -16,11 +16,11 @@ async function freshDb(bytes?: Uint8Array): Promise<Database> {
 describe('migrations', () => {
   it('applies to the latest version and are idempotent', async () => {
     const db = await freshDb()
-    expect(currentSchemaVersion(db)).toBe(1)
+    expect(currentSchemaVersion(db)).toBe(2)
     // Running again must not error or duplicate.
     const applied = runMigrations(db)
-    expect(applied).toBe(1)
-    expect(currentSchemaVersion(db)).toBe(1)
+    expect(applied).toBe(2)
+    expect(currentSchemaVersion(db)).toBe(2)
   })
 })
 

@@ -14,8 +14,14 @@ export default defineConfig({
       '@shared': resolve('src/shared'),
       '@app': resolve('src/app'),
       '@features': resolve('src/features'),
-      '@rules': resolve('src/rules'),
       '@render': resolve('src/render'),
+      '@config': resolve('src/config'),
+      '@jorge-engines/northstar-creative/remotion': resolve(
+        'packages/northstar-creative-engine/src/adapters/remotion.ts',
+      ),
+      '@jorge-engines/northstar-creative': resolve(
+        'packages/northstar-creative-engine/src/index.ts',
+      ),
     },
   },
   plugins: [react()],

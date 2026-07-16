@@ -26,14 +26,18 @@ test.describe('SowyVid home', () => {
     await expect(trust).toHaveAttribute('aria-checked', 'true')
   })
 
-  test('describe + continue generates a preview (shell simulation)', async ({ page }) => {
+  test('describe + continue drives the real creative engine end-to-end', async ({ page }) => {
     await page.getByRole('heading', { name: 'Tu comercial está listo' })
     await expect(page.getByText('Aún no está listo')).toBeVisible()
 
     await page.getByLabel('Cuéntanos qué quieres promocionar').fill('Reparación de pantallas el mismo día')
     await page.getByRole('button', { name: /Continuar/ }).click()
 
-    await expect(page.getByRole('button', { name: /Descargar video/ })).toBeVisible({ timeout: 5000 })
+    // The engine (Northstar) actually ran: a compiled plan summary is shown.
+    const summary = page.getByTestId('commercial-summary')
+    await expect(summary).toBeVisible({ timeout: 5000 })
+    await expect(summary).toHaveText(/\d+ escenas · \d+s/)
+    await expect(page.getByRole('button', { name: /Descargar video/ })).toBeVisible()
   })
 
   test('sidebar navigation switches sections', async ({ page }) => {

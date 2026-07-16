@@ -10,11 +10,15 @@ one simple, guided, visual workflow. No editing experience required.
 ## Status
 
 Early milestone. The **interface shell, design system, project persistence, and
-the deterministic commercial engine (6 templates) are implemented and tested**.
-The media pipeline, Remotion preview/render, audio engine, phone upload, AI
-gateway, and social publishing are **designed but not yet implemented**. See
-[`docs/CURRENT-STATUS.md`](docs/CURRENT-STATUS.md) for an honest, per-feature
-breakdown — nothing here is claimed to work that hasn't been tested.
+the deterministic creative engine (Northstar, from the Jorge Engine Vault) are
+implemented, integrated, and tested** — the app creates a project, develops
+creative concepts, compiles a validated renderer-neutral plan, and persists a
+reproducible selection. The media pipeline, Remotion preview/render, audio, phone
+upload, and AI are **audited generic engines, deferred** to their phases; social
+publishing is **blocked** on credentials. See
+[`docs/CURRENT-STATUS.md`](docs/CURRENT-STATUS.md) and
+[`docs/ENGINE-VAULT-CATALOG.md`](docs/ENGINE-VAULT-CATALOG.md) for an honest,
+per-feature breakdown — nothing here is claimed to work that hasn't been tested.
 
 ## Tech stack
 

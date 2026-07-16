@@ -46,7 +46,7 @@ by `ensureProjectFolders` on project creation.
 
 | Table | Columns | Purpose |
 |---|---|---|
-| `projects` | id, name, status, template_id, created_at, updated_at, **data** (JSON) | Indexed columns for listing; full validated `Project` JSON in `data` |
+| `projects` | id, name, status, template_id, **concept_id, seed** (v2), created_at, updated_at, **data** (JSON) | Indexed columns for listing/reproducibility; full validated `Project` JSON in `data` |
 | `project_versions` | id, project_id→, label, created_at, snapshot (JSON) | Version history for undo/compare (§5) |
 | `export_history` | id, project_id→, created_at, rel_path, platform, width, height, duration_sec, bytes | Preserved export records |
 | `schema_migrations` | version, name, applied_at | Applied-migration ledger |
@@ -60,6 +60,18 @@ project removes its versions and export records. `idx_projects_updated`,
 `src/database/migrations.ts` holds an append-only `MIGRATIONS` list. `runMigrations`
 applies any unapplied migration inside a transaction and records it — idempotent,
 safe on every startup. **Never edit a past migration**; add a new one.
+
+- **v1** — initial schema (`projects`, `project_versions`, `export_history`).
+- **v2** — Northstar integration: non-destructive `ALTER TABLE projects ADD COLUMN
+  concept_id / seed` (+ index). Existing rows get `NULL` and keep loading; the full
+  creative selection also lives in the JSON `data` column
+  (`Project.creative`). Verified against an on-disk v1 database (the app migrated it
+  in place on launch) and by the idempotency test.
+
+The `Project.creative` block (`engineVersion, family, variantId, conceptId, seed,
+inputFingerprint, targetDurationSec`) makes a generated commercial reproducible;
+pre-integration projects (which lack it) load with `creative: null` because Zod
+strips unknown legacy keys.
 
 ## Validation at the boundary (Zod)
 

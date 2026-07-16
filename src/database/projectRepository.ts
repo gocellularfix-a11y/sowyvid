@@ -70,13 +70,15 @@ export class ProjectRepository {
 
   private insert(project: Project): void {
     this.db.run(
-      `INSERT INTO projects (id, name, status, template_id, created_at, updated_at, data)
-       VALUES (?, ?, ?, ?, ?, ?, ?)`,
+      `INSERT INTO projects (id, name, status, template_id, concept_id, seed, created_at, updated_at, data)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
       [
         project.id,
         project.name,
         project.status,
         project.templateId,
+        project.creative?.conceptId ?? null,
+        project.creative?.seed ?? null,
         project.createdAt,
         project.updatedAt,
         JSON.stringify(project),
@@ -89,12 +91,14 @@ export class ProjectRepository {
     const incoming = Project.parse(input)
     const project: Project = { ...incoming, updatedAt: this.now() }
     this.db.run(
-      `INSERT INTO projects (id, name, status, template_id, created_at, updated_at, data)
-       VALUES (?, ?, ?, ?, ?, ?, ?)
+      `INSERT INTO projects (id, name, status, template_id, concept_id, seed, created_at, updated_at, data)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
        ON CONFLICT(id) DO UPDATE SET
          name = excluded.name,
          status = excluded.status,
          template_id = excluded.template_id,
+         concept_id = excluded.concept_id,
+         seed = excluded.seed,
          updated_at = excluded.updated_at,
          data = excluded.data`,
       [
@@ -102,6 +106,8 @@ export class ProjectRepository {
         project.name,
         project.status,
         project.templateId,
+        project.creative?.conceptId ?? null,
+        project.creative?.seed ?? null,
         project.createdAt,
         project.updatedAt,
         JSON.stringify(project),

@@ -14,8 +14,9 @@
     "src/features/**/*.ts",
     "src/features/**/*.tsx",
     "src/shared/**/*.ts",
-    "src/rules/**/*.ts",
+    "src/config/**/*.ts",
+    "packages/northstar-creative-engine/src/**/*.ts",
     "src/render/compositions/**/*.tsx"
   ],
-  "exclude": ["src/features/**/*.node.ts"]
+  "exclude": ["src/features/**/*.node.ts", "**/*.test.ts", "**/*.spec.ts"]
 }
