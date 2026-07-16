@@ -1,6 +1,6 @@
 # SowyVid — Engineering Handoff
 
-_Last updated at commit `0386448` (branch `main`, synced with `origin/main`)._
+_Last updated at commit `88d1260` (branch `main`, synced with `origin/main`)._
 
 ## What this is
 
@@ -45,7 +45,7 @@ Electron 33 · React 18 · TypeScript (strict) · Vite via **electron-vite** ·
 | Northstar Creative | `@jorge-engines/northstar-creative` | ✅ INTEGRATED |
 | MediaVault | `@jorge-engines/mediavault` | ✅ INTEGRATED |
 | FrameLogic Visual | `@jorge-engines/framelogic-visual` | ✅ INTEGRATED |
-| SoundWeave Audio | `@jorge-engines/soundweave-audio` | ⬜ DEFERRED |
+| SoundWeave Audio | `@jorge-engines/soundweave-audio` | ✅ INTEGRATED (`docs/SOUNDWEAVE-INTEGRATION.md`) |
 | BridgeDrop LAN | `@jorge-engines/bridgedrop-lan` | ⬜ DEFERRED |
 | PromptGate AI | `@jorge-engines/promptgate-ai` | ⬜ DEFERRED |
 
@@ -57,18 +57,39 @@ Electron 33 · React 18 · TypeScript (strict) · Vite via **electron-vite** ·
 Create project → type a promotion → **import local media** (dialog → magic-byte
 validation → streaming SHA-256 → dedup → managed copy → ffprobe/ffmpeg analysis →
 thumbnails/posters) → choose a style → **develop Northstar concepts** → **compile**
-→ **FrameLogic VisualPlan** → **real Remotion `<Player>` preview** (media served via
-`sowyvid-media://`, play/pause/seek/duration, missing-media placeholder) →
-everything **persists and survives restart**. Reference-safe deletion + missing-file
-detection included.
+→ **FrameLogic VisualPlan** + **SoundWeave AudioPlan** → **real Remotion `<Player>`
+preview** with **live-playing video** and **real audio** (music/narration/source,
+fades, ducking, master/music/narration/source controls) → everything **persists and
+survives restart**. Reference-safe deletion + missing-file detection included.
+
+**The render engine produces a real MP4** through the production path — verified
+audible and non-black — but see the gap below.
 
 ## What is NOT done (do not claim these work)
 
-- **MP4 export** — "Descargar video" is intentionally unavailable.
-- **Live video playback in the preview** — video shows its **poster still** (not
-  `OffthreadVideo` yet).
-- **Audio** (SoundWeave), **phone upload** (BridgeDrop, "Mi teléfono" unavailable),
-  **AI** (PromptGate). **Social publishing** is blocked (no OAuth/app review).
+- **The owner cannot export.** The engine works (`npm run verify:render` →
+  406x720, 20.05s, h264+aac, **−26.8 dBFS**), but **"Descargar video" is NOT
+  wired**: no IPC, no output-folder picker, no progress/cancel UI, no export
+  history, no open-file/open-folder, no retry. **This is the next task.**
+- **Packaged-path validation** — everything is verified in **development only**.
+  The render bundler compiles `src/render/remotionEntry.ts` **from source at
+  runtime**; a packaged build must ship it. Biggest open unknown.
+- **No music library UI / metadata form / Suno brief UI** — the engine honors
+  `audio.musicId` and `audioMeta`, but nothing in the interface sets them.
+- **No narration source** — the AudioPlan supports imported narration; SowyVid has
+  no TTS (PromptGate deferred).
+- **Phone upload** (BridgeDrop, "Mi teléfono" unavailable), **AI** (PromptGate).
+  **Social publishing** is blocked (no OAuth/app review).
+
+## Read before touching the render cache
+
+**`docs/RENDER-BUNDLE-CACHE.md`.** A previous app (Colibrí) shipped silent videos
+for a month because a serve directory was reused whenever `index.html` existed —
+the stale composition painted no `<Audio>`, so Remotion emitted a phantom silent
+track with no error, and every proof passed because proofs used a *fresh* dir
+while production used the rotten cache. SowyVid invalidates by **content
+fingerprint**, never by existence, and the render tests **plant a stale cache and
+drive the real production function**. Do not "optimize" that away.
 
 ## Commands
 
@@ -82,20 +103,24 @@ npm test                  # vitest unit/integration
 npm run test:e2e          # Playwright browser smoke
 npm run test:e2e:electron # builds, then Playwright drives the REAL Electron app
 npm run build             # electron-vite production build
+npm run verify:render     # REAL MP4 render + measured audio RMS + frame checks
 ```
 
-Current status: typecheck ✓ · lint ✓ · **87 unit** ✓ · **4 browser e2e** ✓ ·
-**3 real-Electron e2e** ✓ · build ✓. Honest per-feature state:
-**`docs/CURRENT-STATUS.md`**.
+Current status: typecheck ✓ · lint ✓ · **257 unit** ✓ · **5 browser e2e** ✓ ·
+**5 real-Electron e2e** ✓ · build ✓ · **verify:render ✓ (11 tests)**. Honest
+per-feature state: **`docs/CURRENT-STATUS.md`**.
 
 ## Key locations
 
 | Area | Path |
 |---|---|
 | Creative engine adapters | `src/features/creative/` (Northstar) |
-| Media pipeline | `src/features/media/` (import, streaming, analysis, references, protocol path) |
+| Media pipeline | `src/features/media/` (import, streaming, analysis, references, protocol path, byte ranges) |
 | Visual planning | `src/features/visual/` (FrameLogic → VisualPlan) |
-| Remotion preview | `src/render/` + `src/app/features/home/PreviewPlayer.tsx` |
+| Audio planning | `src/features/audio/` (SoundWeave → AudioPlan; music providers) |
+| Production render | `src/features/render/` (job, bundle cache, media server, presets, validation) |
+| Remotion preview + composition | `src/render/` + `src/app/features/home/PreviewPlayer.tsx` |
+| **One alias map (5 consumers)** | `src/build/aliases.ts` — engines need aliases in electron.vite, vite.renderer, vitest, **Remotion's webpack**, and tsconfig.base (JSON, hand-synced) |
 | IPC handlers | `src/electron/ipc/registerHandlers.ts` |
 | DB (port + sql.js + migrations + repo) | `src/database/` |
 | Persisted project schema | `src/shared/domain/project.ts` |
@@ -121,8 +146,20 @@ Current status: typecheck ✓ · lint ✓ · **87 unit** ✓ · **4 browser e2e*
 
 ## Recommended next step
 
-**MP4 export (render phase):** render the existing VisualPlan to H.264 via
-`@remotion/renderer` in a Node/child process (platform presets, progress, cancel,
-safe temp cleanup, export history) → enable "Descargar video". Sub-step first:
-live in-preview video via `OffthreadVideo`. Then SoundWeave (audio), then BridgeDrop,
-then PromptGate. Do **not** expand breadth before this vertical slice can export.
+**Wire "Descargar video" to the render engine that already works.** Everything
+below it is done and measured; only the bridge is missing:
+
+1. **IPC + job registry** — `render.start` / `render.cancel` + a progress channel.
+   One active render per project. Gate the button on: valid creative plan, valid
+   visual plan, all managed assets resolve, no active render.
+   Call `runRenderJob({ projectId, props, preset, outputPath, cache, tempRoot,
+   resolveAsset })` — `resolveAsset` mirrors `mediaProtocol.ts`.
+2. **Export history + output folder** — persist path/preset/fingerprint/size, with
+   open-file, open-containing-folder and retry.
+3. **Packaged-path validation** — build a Windows unpacked package and prove
+   ffmpeg/ffprobe resolve, the media protocol resolves, and a real render is
+   audible. Do **not** claim packaging readiness from development mode.
+4. **Music library UI + Suno brief UI**, then narration.
+
+Then BridgeDrop, then PromptGate. Do **not** expand breadth before an owner can
+actually click a button and get their file.
