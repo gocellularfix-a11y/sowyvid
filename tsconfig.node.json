@@ -13,6 +13,7 @@
     "src/render/**/*.ts",
     "src/shared/**/*.ts",
     "src/config/**/*.ts",
+    "src/build/**/*.ts",
     "packages/northstar-creative-engine/src/**/*.ts",
     "packages/mediavault-engine/src/**/*.ts",
     "packages/framelogic-visual-engine/src/**/*.ts",
@@ -21,5 +22,11 @@
     "src/features/**/*.node.ts",
     "electron.vite.config.ts",
     "scripts/**/*.mjs"
+  ],
+  "exclude": [
+    // Bundled by Remotion (webpack) and typechecked by the WEB project, which has
+    // JSX enabled. The main process names the composition via
+    // src/render/compositionId.ts instead of importing the React root.
+    "src/render/remotionEntry.ts"
   ]
 }

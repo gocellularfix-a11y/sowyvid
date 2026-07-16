@@ -26,6 +26,7 @@
       "@database/*": ["src/database/*"],
       "@render/*": ["src/render/*"],
       "@config/*": ["src/config/*"],
+      "@build/*": ["src/build/*"],
       "@jorge-engines/northstar-creative": ["packages/northstar-creative-engine/src/index.ts"],
       "@jorge-engines/northstar-creative/remotion": [
         "packages/northstar-creative-engine/src/adapters/remotion.ts"

@@ -1,25 +1,13 @@
 import { resolve } from 'node:path'
+import { engineAliases, sourceAliases } from './src/build/aliases'
 import { defineConfig } from 'vitest/config'
 
 export default defineConfig({
   resolve: {
     alias: {
-      '@shared': resolve('src/shared'),
-      '@app': resolve('src/app'),
-      '@electron': resolve('src/electron'),
-      '@features': resolve('src/features'),
-      '@database': resolve('src/database'),
-      '@render': resolve('src/render'),
-      '@config': resolve('src/config'),
-      '@jorge-engines/northstar-creative/remotion': resolve(
-        'packages/northstar-creative-engine/src/adapters/remotion.ts',
-      ),
-      '@jorge-engines/northstar-creative': resolve(
-        'packages/northstar-creative-engine/src/index.ts',
-      ),
-      '@jorge-engines/mediavault': resolve('packages/mediavault-engine/src/index.ts'),
-      '@jorge-engines/framelogic-visual': resolve('packages/framelogic-visual-engine/src/index.ts'),
-      '@jorge-engines/soundweave-audio': resolve('packages/soundweave-audio-engine/src/index.ts'),
+      '@build': resolve('src/build'),
+      ...sourceAliases(),
+      ...engineAliases(),
     },
   },
   test: {
