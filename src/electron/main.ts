@@ -1,9 +1,18 @@
-import { app, BrowserWindow, shell, dialog } from 'electron'
+import { app, BrowserWindow, shell, dialog, protocol } from 'electron'
 import { join } from 'node:path'
 import { registerHandlers } from './ipc/registerHandlers'
 import { getAppPaths } from './paths'
 import { openPersistentDatabase, ProjectRepository } from '@database/index'
+import { MEDIA_SCHEME, registerMediaProtocol } from './mediaProtocol'
 import { branding } from '@config/branding'
+
+// The controlled media scheme must be declared privileged BEFORE app is ready.
+protocol.registerSchemesAsPrivileged([
+  {
+    scheme: MEDIA_SCHEME,
+    privileges: { standard: true, secure: true, supportFetchAPI: true, stream: true },
+  },
+])
 
 // Brand the app and its app-data folder from the single branding config,
 // independent of the package name, so user data lives under a stable directory.
@@ -69,6 +78,7 @@ app.whenReady().then(async () => {
   try {
     const db = await openPersistentDatabase(join(paths.database, 'sowyvid.db'))
     const repo = new ProjectRepository(db)
+    registerMediaProtocol(repo)
     registerHandlers({ db, repo })
   } catch (e) {
     // A database that cannot open is fatal, but the owner should get a calm

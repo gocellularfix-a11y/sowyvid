@@ -62,9 +62,20 @@ dev server only. No remote script or style origins.
   every file must have a supported extension AND matching magic bytes
   (extension-spoof rejection); empty and > 300 MB files are rejected; filenames are
   sanitized to a basename and stored content-addressed (`<sha256>.<ext>`), so path
-  traversal and executable uploads are not possible; `resolveFile` guards against
-  escaping the vault root. The import dialog is restricted to the supported
-  extensions.
+  traversal and executable uploads are not possible. The import dialog is
+  restricted to the supported extensions.
+- **SVG is rejected.** Unrestricted SVG can carry scripts, external references, and
+  active content that renders differently/unsafely in Electron/browser. A future
+  SVG path must sanitize + rasterize to PNG before import.
+- **Media analysis** invokes ffprobe/ffmpeg via `execFile` with **argument arrays**
+  over validated managed paths — never a shell string, never user-controlled
+  command construction (`docs/MEDIA-ANALYSIS.md`).
+- **Controlled media protocol.** The renderer never receives raw filesystem paths.
+  It references stable media IDs through a privileged `sowyvid-media://` scheme; the
+  main-process handler (`src/electron/mediaProtocol.ts`) resolves only well-formed
+  IDs (`media_<64hex>`) belonging to the requested project, restricted to that
+  project's `media/` directory with a path-traversal guard (`resolveManagedMediaPath`).
+  Invalid IDs and traversal attempts return 404 (unit-tested).
 - No shell strings are built from user input; no arbitrary command execution.
 
 ## Local-network upload security (designed — see PHONE-IMPORT-ARCHITECTURE.md)

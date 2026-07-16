@@ -9,6 +9,10 @@ import {
   removeMedia,
   type MediaImportInput,
 } from '@features/media/mediaImport.node'
+import { analyzeMedia } from '@features/media/analysis.node'
+import { findMediaReferences, markMissingMedia } from '@features/media/mediaReferences'
+import type { MediaRemoveResult } from '@features/media/types'
+import { existsSync } from 'node:fs'
 import type { MediaImportResult } from '@features/media/types'
 import { SUPPORTED_EXTENSIONS } from '@features/media/limits'
 import {
@@ -73,7 +77,14 @@ export function registerHandlers(ctx: HandlerContext): void {
     return ok(project)
   })
 
-  handle(IPC.ProjectGet, z.string(), (id) => ok(repo.get(id) ?? null))
+  handle(IPC.ProjectGet, z.string(), (id) => {
+    const project = repo.get(id)
+    if (!project) return ok(null)
+    // Detect managed media whose file went missing (flagged, not persisted).
+    const base = projectDir(id)
+    const media = markMissingMedia(project.media, (rel) => existsSync(join(base, rel)))
+    return ok({ ...project, media })
+  })
 
   handle(IPC.ProjectUpdate, Project, async (project) => {
     const saved = repo.save(project)
@@ -111,7 +122,10 @@ export function registerHandlers(ctx: HandlerContext): void {
       const inputs: MediaImportInput[] = filePaths.map((path) => ({ kind: 'path', path }))
       const vaultRoot = join(projectDir(projectId), 'media')
       const summary = await importMedia(vaultRoot, project.media, inputs)
-      const saved = repo.save({ ...project, media: summary.media })
+      // Deeper analysis (probe + thumbnail/poster) runs as child processes, off
+      // the main JS thread; failures never invalidate an otherwise-valid file.
+      const analyzedMedia = await analyzeMedia(vaultRoot, summary.media)
+      const saved = repo.save({ ...project, media: analyzedMedia })
       await db.persist()
       const result: MediaImportResult = { canceled: false, outcomes: summary.outcomes, project: saved }
       return ok(result)
@@ -120,15 +134,32 @@ export function registerHandlers(ctx: HandlerContext): void {
 
   handle(
     IPC.MediaRemove,
-    z.object({ projectId: z.string(), mediaId: z.string() }),
-    async ({ projectId, mediaId }) => {
+    z.object({ projectId: z.string(), mediaId: z.string(), force: z.boolean().optional() }),
+    async ({ projectId, mediaId, force }) => {
       const project = repo.get(projectId)
       if (!project) return err('NOT_FOUND', `Project not found: ${projectId}`)
+
+      // Reference safety: never silently delete media still in use.
+      const references = findMediaReferences(mediaId, {
+        project,
+        versions: repo.listVersions(projectId),
+      })
+      if (references.length > 0 && !force) {
+        const blocked: MediaRemoveResult = { removed: false, blocked: true, references, project }
+        return ok(blocked)
+      }
+
       const vaultRoot = join(projectDir(projectId), 'media')
       const media = await removeMedia(vaultRoot, project.media, mediaId)
-      const saved = repo.save({ ...project, media })
+      // If this was the brand logo, clear the reference so nothing dangles.
+      const brand =
+        project.brand.logoMediaId === mediaId
+          ? { ...project.brand, logoMediaId: null }
+          : project.brand
+      const saved = repo.save({ ...project, brand, media })
       await db.persist()
-      return ok(saved)
+      const result: MediaRemoveResult = { removed: true, blocked: false, references: [], project: saved }
+      return ok(result)
     },
   )
 

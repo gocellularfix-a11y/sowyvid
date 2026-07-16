@@ -6,6 +6,10 @@ export type MediaKind = z.infer<typeof MediaKind>
 export const MediaOrientation = z.enum(['portrait', 'landscape', 'square'])
 export type MediaOrientation = z.infer<typeof MediaOrientation>
 
+/** Lifecycle of the deeper media-analysis pass (probing + thumbnail/poster). */
+export const AnalysisStatus = z.enum(['pending', 'processing', 'ready', 'failed'])
+export type AnalysisStatus = z.infer<typeof AnalysisStatus>
+
 /**
  * A media asset that has been imported into managed project storage. `relPath`
  * is relative to the project's media folder so projects stay portable — we never
@@ -24,11 +28,19 @@ export const MediaAsset = z.object({
   width: z.number().int().positive().nullable(),
   height: z.number().int().positive().nullable(),
   orientation: MediaOrientation.nullable(),
-  /** Seconds; null for images/logos. */
+  /** Seconds; null for images/logos or until analysis runs. */
   durationSec: z.number().nonnegative().nullable(),
+  /** Frames per second (video), set by analysis when detectable. */
+  fps: z.number().positive().nullable().default(null),
   hasAudio: z.boolean(),
-  /** Relative path to a generated thumbnail/poster, if any. */
+  /** Relative path to a generated image thumbnail, if any. */
   thumbRelPath: z.string().nullable(),
+  /** Relative path to a generated video poster frame, if any. */
+  posterRelPath: z.string().nullable().default(null),
+  /** Deeper analysis lifecycle (defaults keep pre-analysis records loadable). */
+  analysisStatus: AnalysisStatus.default('pending'),
+  /** Safe, owner-hideable diagnostic reason when analysis fails. */
+  analysisError: z.string().nullable().default(null),
   /** True once basic validation succeeded. */
   valid: z.boolean(),
   importedAt: z.string().datetime(),

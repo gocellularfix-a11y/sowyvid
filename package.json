@@ -30,6 +30,8 @@
     "postinstall": "node scripts/copy-sql-wasm.mjs"
   },
   "dependencies": {
+    "ffmpeg-static": "^5.3.0",
+    "ffprobe-static": "^3.1.0",
     "nanoid": "^5.0.9",
     "qrcode": "^1.5.4",
     "sql.js": "^1.12.0",

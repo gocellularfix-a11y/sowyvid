@@ -22,8 +22,12 @@ function img(id: string, name: string, w: number, h: number): MediaAsset {
     height: h,
     orientation: w > h ? 'landscape' : w < h ? 'portrait' : 'square',
     durationSec: null,
+    fps: null,
     hasAudio: false,
     thumbRelPath: `thumbnails/${id}.jpg`,
+    posterRelPath: null,
+    analysisStatus: 'ready',
+    analysisError: null,
     valid: true,
     importedAt: FIXED_TS,
   }

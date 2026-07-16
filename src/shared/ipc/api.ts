@@ -3,7 +3,7 @@ import type { Project, CreateProjectInput, CreativeSelection } from '../domain/p
 import type { CreativePlan, CommercialRenderPlan } from '@jorge-engines/northstar-creative'
 import type { CreativeFamilyInfo } from '@features/creative/families'
 import type { SowyvidRendererPlan } from '@features/creative/creativePlanToRenderer'
-import type { MediaImportResult } from '@features/media/types'
+import type { MediaImportResult, MediaRemoveResult } from '@features/media/types'
 
 /**
  * The typed surface exposed to the renderer via the secure preload bridge
@@ -48,8 +48,15 @@ export interface SowyvidBridge {
      * process opens the OS file picker.
      */
     import(input: { projectId: string; paths?: string[] }): Promise<Result<MediaImportResult>>
-    /** Remove a managed media asset from the project and vault. */
-    remove(input: { projectId: string; mediaId: string }): Promise<Result<Project>>
+    /**
+     * Remove a managed media asset. Blocked (not removed) when the asset is still
+     * referenced, unless `force` is set. Returns where it is used.
+     */
+    remove(input: {
+      projectId: string
+      mediaId: string
+      force?: boolean
+    }): Promise<Result<MediaRemoveResult>>
   }
   engine: {
     /** Owner-facing creative families for the "choose your style" step. */

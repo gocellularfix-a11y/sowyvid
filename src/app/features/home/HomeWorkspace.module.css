@@ -137,6 +137,25 @@
   color: var(--accent-bright);
   flex-shrink: 0;
 }
+.mediaThumbBox {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 34px;
+  height: 34px;
+  border-radius: var(--radius-sm);
+  overflow: hidden;
+  background: var(--surface-3);
+  flex-shrink: 0;
+}
+.mediaThumbImg {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+.mediaMissing {
+  color: var(--danger);
+}
 .mediaName {
   flex: 1;
   min-width: 0;

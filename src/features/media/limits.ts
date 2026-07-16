@@ -3,13 +3,19 @@
  * layer, and the UI. The initial supported set per the MediaVault phase spec.
  */
 
-/** Extensions SowyVid accepts for import in this phase. */
+/**
+ * Extensions SowyVid accepts for import in this phase.
+ *
+ * SVG is intentionally EXCLUDED: unrestricted SVG can carry scripts, external
+ * resource references, and other active content that renders differently (and
+ * unsafely) inside Electron/browser. A future SVG path must sanitize + rasterize
+ * to PNG before import. See docs/SECURITY.md.
+ */
 export const SUPPORTED_EXTENSIONS = [
   'jpg',
   'jpeg',
   'png',
   'webp',
-  'svg', // logo images
   'mp4',
   'mov',
   'wav',
@@ -25,7 +31,6 @@ const MIME_BY_EXTENSION: Record<SupportedExtension, string> = {
   jpeg: 'image/jpeg',
   png: 'image/png',
   webp: 'image/webp',
-  svg: 'image/svg+xml',
   mp4: 'video/mp4',
   mov: 'video/quicktime',
   wav: 'audio/wav',

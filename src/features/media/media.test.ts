@@ -149,3 +149,61 @@ describe('MediaVault ↔ project ↔ Northstar', () => {
     expect(() => Project.parse(raw)).not.toThrow()
   })
 })
+
+// A minimal valid-enough WAV (RIFF/WAVE header + PCM data) of `dataBytes` payload.
+function makeWav(dataBytes: number): Buffer {
+  const header = Buffer.alloc(44)
+  header.write('RIFF', 0, 'ascii')
+  header.writeUInt32LE(36 + dataBytes, 4)
+  header.write('WAVE', 8, 'ascii')
+  header.write('fmt ', 12, 'ascii')
+  header.writeUInt32LE(16, 16)
+  header.writeUInt16LE(1, 20)
+  header.writeUInt16LE(1, 22)
+  header.writeUInt32LE(44100, 24)
+  header.writeUInt32LE(88200, 28)
+  header.writeUInt16LE(2, 32)
+  header.writeUInt16LE(16, 34)
+  header.write('data', 36, 'ascii')
+  header.writeUInt32LE(dataBytes, 40)
+  return Buffer.concat([header, Buffer.alloc(dataBytes)])
+}
+
+describe('MediaVault import — hardening', () => {
+  it('rejects SVG files (disabled for security)', async () => {
+    const svg = Buffer.from('<svg xmlns="http://www.w3.org/2000/svg"><script>alert(1)</script></svg>')
+    const { outcomes } = await importMedia(root, [], [
+      { kind: 'bytes', originalName: 'logo.svg', bytes: svg },
+    ])
+    expect(outcomes[0]?.status).toBe('unsupported')
+    // Nothing was written to managed storage.
+    expect(existsSync(join(root, 'files'))).toBe(false)
+  })
+
+  it('streams a multi-megabyte file into managed storage (bounded memory)', async () => {
+    // 5 MB WAV written to disk, imported via the streaming path (never buffered
+    // whole by the importer — see streamingImport.node.ts).
+    const wav = makeWav(5 * 1024 * 1024)
+    const source = join(root, 'big.wav')
+    writeFileSync(source, wav)
+    const { outcomes, media } = await importMedia(root, [], [{ kind: 'path', path: source }])
+    expect(outcomes[0]?.status).toBe('imported')
+    expect(media[0]?.kind).toBe('audio')
+    expect(media[0]?.bytes).toBe(wav.length)
+    const hash = media[0]!.id.replace('media_', '')
+    expect(existsSync(join(root, 'files', `${hash}.wav`))).toBe(true)
+    // No leftover temp parts after a successful import.
+    expect(readdirSync(join(root, 'temp'))).toHaveLength(0)
+  })
+
+  it('cleans up temp files when a streamed file fails validation', async () => {
+    // PNG bytes with a .mp4 name → signature mismatch mid-stream → rejected.
+    const source = join(root, 'fake.mp4')
+    writeFileSync(source, PNG_1x1)
+    const { outcomes } = await importMedia(root, [], [{ kind: 'path', path: source }])
+    expect(outcomes[0]?.status).toBe('unsupported')
+    // The temp dir exists but holds no orphaned .part files.
+    const temp = join(root, 'temp')
+    if (existsSync(temp)) expect(readdirSync(temp)).toHaveLength(0)
+  })
+})

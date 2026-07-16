@@ -17,7 +17,7 @@ Honest, per-feature state. Legend:
 |---|---|
 | `npm run typecheck` | ✅ passes (node + web) |
 | `npm run lint` | ✅ 0 warnings (`packages/**` vendored engines excluded) |
-| `npm test` | ✅ **54 passing** across 11 files (Northstar 14 + MediaVault 5 + media 11 + persistence 8 + creative 16) |
+| `npm test` | ✅ **71 passing** across 13 files (adds media hardening: streaming, real ffprobe/ffmpeg analysis, reference safety, managed-path security) |
 | `npm run test:e2e` | ✅ 4 passing (browser; incl. UI→engine end-to-end) |
 | `npm run test:e2e:electron` | ✅ 2 passing (real Electron: Northstar persistence + MediaVault import) |
 | `npm run build` | ✅ succeeds (main + preload + renderer) |
@@ -33,6 +33,7 @@ Honest, per-feature state. Legend:
 | 4 | Project persistence (SQLite/Zod/migrations/history) | ✅ | sql.js port; atomic writes; **migration v2**; restart-survival tested |
 | A | **Northstar Creative Engine integration** | ✅ | Canonical creative brain; app uses it UI→IPC→persist; verified via real-Electron test |
 | B | **MediaVault media import** | ✅ | Real file import → validate → sha256 → dedup → managed copy → SQLite; UI wired; real-Electron test |
+| B+ | **Media hardening** | ✅ | SVG rejected; streaming import (bounded memory); ffprobe/ffmpeg analysis + thumbnails/posters; reference-safe deletion; missing-file detection; controlled `sowyvid-media://` protocol |
 | — | Branding decoupled | ✅ | `src/config/branding.ts` single source; `docs/BRANDING.md` |
 | — | Real-Electron verification | ✅ | `e2e-electron/` drives actual preload+IPC+SQLite for persistence & media |
 

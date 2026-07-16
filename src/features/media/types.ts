@@ -1,6 +1,7 @@
 import type { MediaAsset } from '@shared/domain/media'
 import type { Project } from '@shared/domain/project'
 import type { MediaImportStatus } from './limits'
+import type { MediaReference } from './mediaReferences'
 
 /** Per-file result of an import batch (isomorphic — safe for the IPC contract). */
 export interface MediaImportOutcome {
@@ -18,5 +19,14 @@ export interface MediaImportResult {
   canceled: boolean
   outcomes: MediaImportOutcome[]
   /** The project with its updated media list persisted. */
+  project: Project
+}
+
+/** Result of a media removal request (may be blocked by references). */
+export interface MediaRemoveResult {
+  removed: boolean
+  /** True when removal was blocked because the media is still referenced. */
+  blocked: boolean
+  references: MediaReference[]
   project: Project
 }

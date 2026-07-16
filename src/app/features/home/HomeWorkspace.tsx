@@ -6,6 +6,7 @@ import { StepBadge } from '../../ui/Primitives'
 import { MediaThumb, type ThumbKind } from '../../ui/MediaThumb'
 import { useToast } from '../../ui/toastContext'
 import { getBridge, isBrowserPreview } from '../../bridge'
+import { tileImageUrl } from '../../mediaUrl'
 import type { MediaAsset } from '@shared/domain/media'
 import { copy } from '../../content/copy'
 import styles from './HomeWorkspace.module.css'
@@ -102,7 +103,13 @@ export function HomeWorkspace(): JSX.Element {
   const onRemoveMedia = async (mediaId: string): Promise<void> => {
     if (!projectId) return
     const res = await getBridge().media.remove({ projectId, mediaId })
-    if (res.ok) setMedia(res.value.media)
+    if (!res.ok) return
+    if (res.value.blocked) {
+      const where = res.value.references.map((r) => r.label).join(', ')
+      toast.show(`No se puede quitar: se usa en ${where}.`, 'info')
+      return
+    }
+    setMedia(res.value.project.media)
   }
 
   /**
@@ -196,20 +203,32 @@ export function HomeWorkspace(): JSX.Element {
           </button>
           {media.length > 0 && (
             <div className={styles.mediaGrid} data-testid="media-grid">
-              {media.map((asset) => (
-                <div key={asset.id} className={styles.mediaTile} title={asset.originalName}>
-                  <Icon name={KIND_ICON[asset.kind]} size={20} />
-                  <span className={styles.mediaName}>{asset.originalName}</span>
-                  <button
-                    type="button"
-                    className={styles.mediaRemove}
-                    aria-label={`Quitar ${asset.originalName}`}
-                    onClick={() => void onRemoveMedia(asset.id)}
-                  >
-                    <Icon name="x" size={14} />
-                  </button>
-                </div>
-              ))}
+              {media.map((asset) => {
+                const thumb = projectId ? tileImageUrl(projectId, asset) : null
+                return (
+                  <div key={asset.id} className={styles.mediaTile} title={asset.originalName}>
+                    <span className={styles.mediaThumbBox}>
+                      {thumb ? (
+                        <img src={thumb} alt="" className={styles.mediaThumbImg} />
+                      ) : (
+                        <Icon name={KIND_ICON[asset.kind]} size={18} />
+                      )}
+                    </span>
+                    <span className={styles.mediaName}>
+                      {asset.originalName}
+                      {!asset.valid && <span className={styles.mediaMissing}> · no disponible</span>}
+                    </span>
+                    <button
+                      type="button"
+                      className={styles.mediaRemove}
+                      aria-label={`Quitar ${asset.originalName}`}
+                      onClick={() => void onRemoveMedia(asset.id)}
+                    >
+                      <Icon name="x" size={14} />
+                    </button>
+                  </div>
+                )
+              })}
             </div>
           )}
           <div className={styles.sourceRow}>

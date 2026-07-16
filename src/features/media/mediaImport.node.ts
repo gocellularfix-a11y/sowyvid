@@ -1,6 +1,8 @@
-import { readFile, stat } from 'node:fs/promises'
-import { basename } from 'node:path'
-import { MediaVault, type MediaRecord } from '@jorge-engines/mediavault'
+import { stat, rm } from 'node:fs/promises'
+import { createReadStream } from 'node:fs'
+import { basename, join } from 'node:path'
+import { Readable } from 'node:stream'
+import { MediaVault, EXTENSION_KIND, type MediaRecord } from '@jorge-engines/mediavault'
 import type { MediaAsset } from '@shared/domain/media'
 import {
   MAX_FILE_BYTES,
@@ -10,22 +12,33 @@ import {
   type MediaImportStatus,
 } from './limits'
 import type { MediaImportOutcome } from './types'
+import { streamImport } from './streamingImport.node'
 
 /**
  * Node-only media import service (`.node.ts` so the web build never pulls it in).
- * Wraps the generic MediaVault engine — validation, SHA-256 content IDs, dedup,
- * atomic managed copy, metadata — and maps its `MediaRecord` into SowyVid's
- * domain `MediaAsset`, which references a project-relative path (never the
- * original selected path). MediaVault knows nothing about SowyVid.
+ * Uses the streaming importer (bounded memory) over the generic MediaVault store,
+ * and maps its `MediaRecord` into SowyVid's domain `MediaAsset`, which references
+ * a project-relative path (never the original selected path). MediaVault knows
+ * nothing about SowyVid.
  */
 
 export type MediaImportInput =
   | { kind: 'path'; path: string }
   | { kind: 'bytes'; originalName: string; bytes: Buffer }
 
+/** Reduce any name to a safe basename (no directories, no control chars). */
+function safeName(name: string): string {
+  const base = basename(name)
+  let out = ''
+  for (const ch of base) {
+    const code = ch.codePointAt(0) ?? 0
+    if (code >= 0x20 && code !== 0x7f) out += ch
+  }
+  return out.trim().slice(0, 200) || 'unnamed'
+}
+
 export interface MediaImportSummary {
   outcomes: MediaImportOutcome[]
-  /** The project's media list after the import (existing + newly referenced). */
   media: MediaAsset[]
 }
 
@@ -44,63 +57,78 @@ export function recordToAsset(record: MediaRecord): MediaAsset {
     height: record.height,
     orientation: record.orientation,
     durationSec: record.durationMs === null ? null : record.durationMs / 1000,
+    fps: null,
     hasAudio: record.hasAudio ?? record.kind === 'audio',
     thumbRelPath: null,
+    posterRelPath: null,
+    analysisStatus: 'pending',
+    analysisError: null,
     valid: true,
     importedAt: record.importedAt,
   }
 }
 
-async function loadInput(
-  input: MediaImportInput,
-): Promise<{ originalName: string; bytes: Buffer }> {
-  if (input.kind === 'bytes') return { originalName: input.originalName, bytes: input.bytes }
-  const info = await stat(input.path)
-  if (!info.isFile()) throw new Error('not a file')
-  return { originalName: basename(input.path), bytes: await readFile(input.path) }
-}
-
 /**
- * Import a batch of files into the project's managed MediaVault. `vaultRoot`
- * should be `<project>/media`. Returns per-file outcomes plus the merged media
- * list (existing assets + newly imported/referenced, deduped by content ID).
+ * Import a batch of files into the project's managed MediaVault via the streaming
+ * pipeline. `vaultRoot` should be `<project>/media`. Returns per-file outcomes
+ * plus the merged media list (existing + newly imported/referenced, deduped by
+ * content ID).
  */
 export async function importMedia(
   vaultRoot: string,
   existing: readonly MediaAsset[],
   inputs: readonly MediaImportInput[],
 ): Promise<MediaImportSummary> {
-  const vault = new MediaVault(vaultRoot)
   const outcomes: MediaImportOutcome[] = []
   const byId = new Map(existing.map((m) => [m.id, m]))
 
   for (const input of inputs) {
-    let originalName = input.kind === 'bytes' ? input.originalName : basename(input.path)
+    const originalName = safeName(
+      input.kind === 'bytes' ? input.originalName : basename(input.path),
+    )
     try {
-      const { originalName: name, bytes } = await loadInput(input)
-      originalName = name
-      const ext = extensionOf(name)
+      let size: number
+      if (input.kind === 'bytes') {
+        size = input.bytes.length
+      } else {
+        const info = await stat(input.path)
+        if (!info.isFile()) throw new Error('not a file')
+        size = info.size
+      }
 
+      const ext = extensionOf(originalName)
       if (!isSupportedExtension(ext)) {
         outcomes.push({ status: 'unsupported', originalName, detail: `extension .${ext || '?'}` })
         continue
       }
-      if (bytes.length === 0) {
+      if (size === 0) {
         outcomes.push({ status: 'empty', originalName })
         continue
       }
-      if (bytes.length > MAX_FILE_BYTES) {
-        outcomes.push({ status: 'oversized', originalName, detail: `${bytes.length} bytes` })
+      if (size > MAX_FILE_BYTES) {
+        outcomes.push({ status: 'oversized', originalName, detail: `${size} bytes` })
+        continue
+      }
+      const kind = EXTENSION_KIND[ext]
+      if (!kind) {
+        outcomes.push({ status: 'unsupported', originalName, detail: `extension .${ext}` })
         continue
       }
 
-      const result = await vault.importBytes({ originalName, bytes })
-      const asset = recordToAsset(result.record)
+      const readable =
+        input.kind === 'bytes' ? Readable.from(input.bytes) : createReadStream(input.path)
+      const { record, duplicate } = await streamImport(vaultRoot, {
+        originalName,
+        ext,
+        kind,
+        size,
+        readable,
+      })
+      const asset = recordToAsset(record)
       byId.set(asset.id, asset)
-      outcomes.push({ status: result.duplicate ? 'duplicate' : 'imported', originalName, asset })
+      outcomes.push({ status: duplicate ? 'duplicate' : 'imported', originalName, asset })
     } catch (e) {
       const message = e instanceof Error ? e.message : String(e)
-      // MediaVault rejects extension-spoofed files (magic-byte mismatch).
       const status: MediaImportStatus = /does not match its extension/.test(message)
         ? 'unsupported'
         : 'failed'
@@ -111,7 +139,11 @@ export async function importMedia(
   return { outcomes, media: [...byId.values()] }
 }
 
-/** Remove a media asset from the managed vault and the project's list. */
+/**
+ * Remove a media asset: the managed file + record (MediaVault) AND its generated
+ * derivatives (poster/thumbnail). Derivative removal is best-effort and never
+ * blocks removing the source; reference-safety is enforced by the caller.
+ */
 export async function removeMedia(
   vaultRoot: string,
   existing: readonly MediaAsset[],
@@ -119,5 +151,10 @@ export async function removeMedia(
 ): Promise<MediaAsset[]> {
   const vault = new MediaVault(vaultRoot)
   await vault.remove(mediaId)
+  const hash = mediaId.replace(/^media_/, '')
+  await Promise.all([
+    rm(join(vaultRoot, 'posters', `${hash}.jpg`), { force: true }),
+    rm(join(vaultRoot, 'thumbnails', `${hash}.jpg`), { force: true }),
+  ])
   return existing.filter((m) => m.id !== mediaId)
 }
