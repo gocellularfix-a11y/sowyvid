@@ -1,5 +1,11 @@
 import type { VisualPlan } from '@features/visual/visualPlan'
 import type { MediaAsset } from '@shared/domain/media'
+import {
+  computeVideoPlayback,
+  SOURCE_AUDIO_OFF,
+  type SourceAudioPolicy,
+  type VideoPlayback,
+} from './videoPlayback'
 
 // Canonical controlled media URL (mirrors src/app/mediaUrl.ts + mediaProtocol.ts).
 function mediaUrlById(projectId: string, mediaId: string, variant: 'original' | 'poster' | 'thumb'): string {
@@ -17,8 +23,13 @@ function mediaUrlById(projectId: string, mediaId: string, variant: 'original' | 
 export interface CompositionMedia {
   assetId: string
   kind: MediaAsset['kind']
+  /** The asset itself: the real video source for videos, the image for images. */
   url: string
+  /** Video poster still — loading underlay and decode-failure fallback. Null if none. */
+  posterUrl: string | null
   missing: boolean
+  /** Live-playback window; null for images/logos and for missing assets. */
+  playback: VideoPlayback | null
 }
 
 export interface CompositionScene {
@@ -51,12 +62,22 @@ export type CommercialCompositionProps = {
   scenes: CompositionScene[]
 }
 
+export interface CompositionPropsOptions {
+  /**
+   * Source-video audio policy. Omitted → OFF. Only SoundWeave's AudioPlan should
+   * ever turn this on, so no imported clip can start making noise by accident.
+   */
+  sourceAudio?: SourceAudioPolicy
+}
+
 export function visualPlanToCompositionProps(
   plan: VisualPlan,
   projectId: string,
   media: readonly MediaAsset[],
+  options: CompositionPropsOptions = {},
 ): CommercialCompositionProps {
   const byId = new Map(media.map((m) => [m.id, m]))
+  const sourceAudio = options.sourceAudio ?? SOURCE_AUDIO_OFF
 
   const scenes: CompositionScene[] = plan.scenes.map((scene) => ({
     id: scene.id,
@@ -72,16 +93,29 @@ export function visualPlanToCompositionProps(
     media: scene.media.map((m) => {
       const asset = byId.get(m.assetId)
       const kind = asset?.kind ?? 'image'
-      const variant = kind === 'video' ? 'poster' : 'original'
       const missing = !asset || !asset.valid
+      const isVideo = !missing && kind === 'video'
+
+      // Videos resolve to their REAL source and play live. The poster is kept as
+      // the loading underlay / decode-failure fallback — never as the content.
+      // Missing assets keep a URL that 404s, so the composition draws its safe
+      // placeholder instead of failing.
       return {
         assetId: m.assetId,
         kind,
-        // Videos: prefer the poster for the preview still; the player can swap to
-        // the video source. Missing assets get a URL that resolves to 404 → the
-        // composition renders a placeholder instead.
-        url: mediaUrlById(projectId, m.assetId, missing ? 'original' : variant),
+        url: mediaUrlById(projectId, m.assetId, 'original'),
+        posterUrl:
+          isVideo && asset.posterRelPath ? mediaUrlById(projectId, m.assetId, 'poster') : null,
         missing,
+        playback: isVideo
+          ? computeVideoPlayback({
+              asset,
+              sceneDurationInFrames: scene.durationInFrames,
+              fps: plan.fps,
+              shotBehavior: scene.shotBehavior,
+              sourceAudio,
+            })
+          : null,
       }
     }),
     copy: scene.copy,

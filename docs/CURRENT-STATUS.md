@@ -38,6 +38,7 @@ Honest, per-feature state. Legend:
 | — | Real-Electron verification | ✅ | `e2e-electron/` drives actual preload+IPC+SQLite for persistence & media |
 | C | **FrameLogic visual planning** | ✅ | Validated VisualPlan per commercial (art direction, motion, layout, text-safe frames) |
 | C | **Real Remotion Player preview** | ✅ | Step 4 plays the plan with imported media via `sowyvid-media://`; play/pause/seek/duration; missing-media placeholder |
+| C+ | **Live managed-video playback** | ✅ | `<OffthreadVideo>` replaces the poster-only still; trim to scene, plan-defined short-clip loop/freeze, poster as loading/failure fallback, **source audio muted by default**; protocol now honors byte ranges (seeking). Verified with a real ffmpeg clip decoding/playing/seeking in Electron (`docs/VIDEO-ENGINE.md`) |
 
 ## Engine vault (Jorge Engine Vault v1.0.0)
 
@@ -48,8 +49,8 @@ per phase.
 |---|---|---|---|
 | Northstar Creative | `@jorge-engines/northstar-creative` | ✅ **INTEGRATED** | A |
 | MediaVault | `@jorge-engines/mediavault` | ✅ **INTEGRATED** | B (now) |
-| FrameLogic Visual | `@jorge-engines/framelogic-visual` | ⬜ DEFERRED | C (visual/render) |
-| SoundWeave Audio | `@jorge-engines/soundweave-audio` | ⬜ DEFERRED | D (audio) |
+| FrameLogic Visual | `@jorge-engines/framelogic-visual` | ✅ **INTEGRATED** | C (visual/render) |
+| SoundWeave Audio | `@jorge-engines/soundweave-audio` | ⬜ DEFERRED | D (audio, next) |
 | BridgeDrop LAN | `@jorge-engines/bridgedrop-lan` | ⬜ DEFERRED | E (phone import) |
 | PromptGate AI | `@jorge-engines/promptgate-ai` | ⬜ DEFERRED | F (AI, last) |
 
@@ -74,15 +75,21 @@ independently re-run here — they will be validated as each is integrated.
   validated (magic-byte + size), SHA-256 content-addressed, deduplicated, copied
   into managed project storage, listed in the UI, and persisted across restart.
   Imported media feeds Northstar as stable IDs. Verified by a real-Electron test.
+- **Preview the commercial** in a real Remotion `<Player>`: the FrameLogic VisualPlan
+  drawn to frames with the owner's own media, play/pause/seek/duration.
+- **Imported videos play live** in that preview (not poster stills): trimmed to their
+  scene, plan-defined loop/freeze when a clip is short, poster as the loading/failure
+  fallback, and **source audio muted by default**. Proven by a real ffmpeg clip that
+  decodes, plays and seeks inside Electron.
 
 ## What does NOT work yet (not pretended to)
 
-- No rendered video — the Remotion renderer (FrameLogic phase) is deferred; the plan
-  is validated + persisted but not drawn to frames. "Descargar video" is marked
-  unavailable.
-- No thumbnails / video-duration probing yet (media tiles show icon + filename).
+- **No MP4 export.** The plan is validated, persisted and previewable, but nothing is
+  encoded to a file yet. "Descargar video" is marked unavailable.
+- **No audio at all** — no music, no narration, and source-video audio is deliberately
+  muted. SoundWeave is the next phase.
 - Phone upload (`Mi teléfono`) — deferred to BridgeDrop (Phase E), marked unavailable.
-- Audio, real AI, social publishing (Phases D/F; social 🔒 blocked).
+- Real AI (PromptGate, Phase F); social publishing (🔒 blocked).
 
 ## Known issues / caveats
 
@@ -90,8 +97,10 @@ independently re-run here — they will be validated as each is integrated.
 2. Vendored engines consume **source** via alias (vendor-copy strategy) rather than
    a separate npm-workspace build — the vault's TS 7 / vitest 3-4 toolchain fails to
    install here (`docs/ENGINE-INTEGRATION-ARCHITECTURE.md`).
-3. Media has no semantic roles/tags until MediaVault; placement uses orientation +
-   quality scoring.
+3. Media has no semantic roles/tags; placement uses orientation + quality scoring.
+   Northstar chooses which assets land in which scenes, so fixtures cannot force a
+   specific clip into a specific scene — tests that need a short-clip path shorten
+   `durationSec` explicitly rather than pass vacuously.
 4. Provisional brand — not for public release (`docs/BRANDING.md`).
 5. AI shows a mock-active flag; no real provider wired.
 
@@ -102,9 +111,15 @@ independently re-run here — they will be validated as each is integrated.
 
 ## Recommended next step
 
-**MP4 export (the render phase).** The owner can now *see* the commercial in a real
-Remotion preview; the next jump is turning that same plan into a downloadable file
-via `@remotion/renderer` in a Node/child process (H.264, platform presets, progress,
-cancel, safe temp cleanup) — enabling "Descargar video". A smaller intermediate
-step is live in-preview video playback (`OffthreadVideo`) so video clips play, not
-just show their poster still. (SoundWeave audio is the phase after.)
+**SoundWeave audio, then MP4 export.** The picture is now complete — the owner sees
+their commercial with their own clips playing live. What is missing is sound and a
+file.
+
+1. **SoundWeave** (audio planning) → an AudioPlan the Remotion composition renders:
+   background music, narration, source-audio policy, fades, ducking, looping.
+2. **MP4 export** via `@remotion/renderer` in a worker process (H.264 + AAC,
+   platform presets, progress, cancel, safe temp cleanup) — enabling "Descargar
+   video".
+
+Export comes *after* audio on purpose: exporting first would only be able to
+produce a silent video, and a silent export is not evidence that rendering works.

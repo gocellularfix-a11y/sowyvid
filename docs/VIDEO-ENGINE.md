@@ -6,8 +6,77 @@
 > input contract is the **VisualPlan** (built from Northstar's render plan), not the
 > retired `ScenePlan`. MP4 export via `@remotion/renderer` is the next phase.
 
-The rest of this document is the original design sketch; the authoritative,
-implemented behavior is in the FrameLogic + Remotion-preview docs above.
+The rest of this document (from "1. Core principle" down) is the original design
+sketch and is **stale**; the authoritative implemented behavior is the FrameLogic
++ Remotion-preview docs above, plus the live-video rules immediately below.
+
+---
+
+## Live managed-video playback (implemented)
+
+Video plays for real via Remotion `<OffthreadVideo>`. The rules live in
+**`src/render/videoPlayback.ts`** — pure, with no React/Remotion imports — so
+every boundary is unit-testable without mounting a composition. The composition
+only *applies* the decisions.
+
+### Trim
+
+A scene needs `sceneDurationInFrames`; the clip rarely matches.
+
+| Case | Behavior |
+|---|---|
+| Clip **longer** than the scene | Trimmed to exactly the scene window (`trimBefore`/`trimAfter`). Never reads past the requested window or past the source. |
+| Clip **shorter** than the scene | Consumes all remaining source, then the plan-defined fallback covers the tail. |
+| **Unknown** duration (analysis pending/failed) | No guess: ask for the scene window and let the poster cover any gap. |
+
+Playback always begins at a **valid source position**: the head trim is clamped
+into `[0, sourceFrames - 1]`, so a bad offset can never start past the end.
+
+### Short-clip fallback is plan-defined
+
+Northstar's `shotBehavior` decides — this is not a renderer preference:
+
+- `rapid_montage` → **bounded loop**. Repeated, cut-driven motion is the whole
+  point of that shot, so restarting reads as intentional. The loop count is
+  `ceil(scene / playable)` — enough to cover the scene, never unbounded.
+- **everything else** → **freeze the final real frame**. Every other shot is a
+  considered hold/push/pull where a jump back to frame 0 looks like a glitch.
+  Implemented with `<Freeze active={f => f >= playable}>`, a predicate, so the
+  element is never remounted at the seam.
+- **unknown** behaviors → freeze. A still is always safe; a surprise loop is not.
+
+### Source-video audio
+
+Muted **by default and unconditionally** unless a caller explicitly opts in AND
+the asset genuinely has an audio track (`hasAudio`). Volume is clamped to `0..1`
+and forced to `0` whenever muted. Only SoundWeave's AudioPlan should ever opt in
+— so no imported clip can start making noise by accident. Each scene renders a
+single media layer (the first resolvable asset), which is also what prevents two
+source-audio tracks playing at once.
+
+### Failure and missing media
+
+- **Loading** → the poster sits underneath the video, so a buffering scene is
+  never blank.
+- **Decode failure** → poster becomes the visible frame (`onError`).
+- **Decode failure with no poster**, or **missing/invalid asset** → the safe
+  placeholder. It is deliberately **silent and text-free**: it must be harmless
+  if it ever reaches an exported commercial, so it degrades to brand-toned depth
+  rather than announcing an error to the owner's audience.
+
+### Access
+
+Managed video is reached **only** through `sowyvid-media://asset/<projectId>/<mediaId>/original`.
+No filesystem paths are exposed to the renderer. Seeking depends on the
+protocol's byte-range support (`docs/REMOTION-PREVIEW.md`).
+
+### Evidence
+
+`e2e-electron/live-video-preview.spec.ts` imports a **genuine ffmpeg H.264 clip**
+through the real IPC path and drives a real `<video>` at the managed URL inside
+Electron: real dimensions (320×240), `currentTime` advancing (frames actually
+play — not a still), a seek landing at 2.0s, and `206` + exact `Content-Range` on
+a range request.
 
 This document describes the planned Remotion composition system for **SowyVid**. Its one
 job is to **render a `ScenePlan`** into moving pictures. All business logic (what scenes

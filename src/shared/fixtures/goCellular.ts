@@ -33,6 +33,49 @@ function img(id: string, name: string, w: number, h: number): MediaAsset {
   }
 }
 
+/**
+ * A managed video asset. `durationSec`/`hasAudio` are what the live-playback
+ * rules key off, so tests can build long/short/silent/noisy clips explicitly.
+ */
+export function vid(
+  id: string,
+  name: string,
+  opts: {
+    durationSec: number | null
+    hasAudio?: boolean
+    width?: number
+    height?: number
+    fps?: number | null
+    poster?: boolean
+    valid?: boolean
+    analysisStatus?: MediaAsset['analysisStatus']
+  },
+): MediaAsset {
+  const w = opts.width ?? 1080
+  const h = opts.height ?? 1920
+  return {
+    id,
+    kind: 'video',
+    relPath: `media/${id}.mp4`,
+    originalName: name,
+    mimeType: 'video/mp4',
+    hash: `hash_${id}`,
+    bytes: 4_200_000,
+    width: w,
+    height: h,
+    orientation: w > h ? 'landscape' : w < h ? 'portrait' : 'square',
+    durationSec: opts.durationSec,
+    fps: opts.fps === undefined ? 30 : opts.fps,
+    hasAudio: opts.hasAudio ?? false,
+    thumbRelPath: `thumbnails/${id}.jpg`,
+    posterRelPath: opts.poster === false ? null : `posters/${id}.jpg`,
+    analysisStatus: opts.analysisStatus ?? 'ready',
+    analysisError: null,
+    valid: opts.valid ?? true,
+    importedAt: FIXED_TS,
+  }
+}
+
 export const GO_CELLULAR_MEDIA: MediaAsset[] = [
   img('gc_store', 'tienda.jpg', 1080, 1920),
   img('gc_phone1', 'iphone_certificado.jpg', 1080, 1920),
@@ -80,6 +123,33 @@ export const goCellularProject: Project = Project.parse({
   status: 'draft',
   createdAt: FIXED_TS,
   updatedAt: FIXED_TS,
+})
+
+/**
+ * Same promotion, but the owner imported real clips.
+ *
+ *   gc_clip_long — 30s, HAS audio → longer than any scene, so it exercises
+ *                  trimming AND the "muted unless explicitly enabled" rule
+ *                  against a clip that genuinely COULD make noise.
+ *   gc_clip_mute — 30s, no audio track → can never be unmuted.
+ *
+ * Both clips are long on purpose: Northstar chooses which assets land in which
+ * scenes, so a fixture cannot reliably force a SHORT clip into a scene. Tests
+ * that need the short-clip path shorten `durationSec` explicitly rather than
+ * hoping the selector picks a short asset — otherwise those assertions pass
+ * vacuously.
+ */
+export const GO_CELLULAR_VIDEO_MEDIA: MediaAsset[] = [
+  vid('gc_clip_long', 'tienda_clip.mp4', { durationSec: 30, hasAudio: true }),
+  vid('gc_clip_mute', 'producto_clip.mp4', { durationSec: 30, hasAudio: false }),
+  img('gc_phone1', 'iphone_certificado.jpg', 1080, 1920),
+  img('gc_phone2', 'samsung_oferta.jpg', 1080, 1350),
+]
+
+export const goCellularVideoProject: Project = Project.parse({
+  ...goCellularProject,
+  id: 'fixture_go_cellular_video',
+  media: GO_CELLULAR_VIDEO_MEDIA,
 })
 
 /**
