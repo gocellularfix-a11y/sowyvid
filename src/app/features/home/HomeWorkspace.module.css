@@ -285,6 +285,10 @@
   border-radius: var(--radius-lg);
   overflow: hidden;
   background: #000;
+  /* The step column is a flex column, so the player would otherwise be shrunk
+     by its siblings (the audio controls) — to literally zero height when the
+     column overflows. The preview must never be the thing that gives way. */
+  flex-shrink: 0;
 }
 .playerWrap > * {
   max-height: 420px;
@@ -311,6 +315,7 @@
   align-items: center;
   gap: 16px;
   margin-top: 12px;
+  flex-shrink: 0;
 }
 .audioControl {
   display: flex;

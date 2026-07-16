@@ -42,6 +42,26 @@ test.describe('SowyVid home', () => {
     await expect(page.getByRole('button', { name: /Descargar video/ })).toBeVisible()
   })
 
+  test('the preview exposes real audio controls without crushing the player', async ({ page }) => {
+    await page.getByLabel('Cuéntanos qué quieres promocionar').fill('Reparación de pantallas el mismo día')
+    await page.getByRole('button', { name: /Continuar/ }).click()
+    await expect(page.getByTestId('commercial-summary')).toBeVisible({ timeout: 5000 })
+
+    await expect(page.getByTestId('audio-controls')).toBeVisible()
+    await expect(page.getByTestId('master-volume')).toBeVisible()
+    await expect(page.getByTestId('source-audio-toggle')).toBeVisible()
+
+    // Regression guard: the step column is a flex column, so adding controls
+    // beside the player once shrank it to zero height. The player must keep a
+    // real box.
+    const box = await page.getByTestId('preview-player').boundingBox()
+    expect(box).not.toBeNull()
+    expect(box!.height).toBeGreaterThan(100)
+
+    // This project has no music selected, so nothing is missing and no warning shows.
+    await expect(page.getByTestId('audio-warning')).toHaveCount(0)
+  })
+
   test('sidebar navigation switches sections', async ({ page }) => {
     await page.getByRole('button', { name: 'Mis comerciales' }).click()
     await expect(page.getByRole('heading', { name: 'Mis comerciales' })).toBeVisible()

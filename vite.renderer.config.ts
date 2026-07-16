@@ -25,6 +25,12 @@ export default defineConfig({
       '@jorge-engines/framelogic-visual': resolve(
         'packages/framelogic-visual-engine/src/index.ts',
       ),
+      '@jorge-engines/soundweave-audio': resolve(
+        'packages/soundweave-audio-engine/src/index.ts',
+      ),
+      // NOTE: engine aliases must be added in FOUR places — here, electron.vite.config.ts,
+      // vitest.config.ts and tsconfig.base.json. Missing this one still typechecks
+      // and still passes unit tests; only the browser preview breaks.
     },
   },
   plugins: [react()],
