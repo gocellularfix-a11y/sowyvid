@@ -116,6 +116,54 @@
 .sourceBtn svg {
   color: var(--accent-bright);
 }
+.mediaGrid {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  max-height: 190px;
+  overflow-y: auto;
+  padding-right: 2px;
+}
+.mediaTile {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  padding: var(--space-2) var(--space-3);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-md);
+  background: var(--surface-2);
+}
+.mediaTile svg {
+  color: var(--accent-bright);
+  flex-shrink: 0;
+}
+.mediaName {
+  flex: 1;
+  min-width: 0;
+  font-size: var(--fs-caption);
+  color: var(--text-secondary);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.mediaRemove {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 24px;
+  height: 24px;
+  border-radius: var(--radius-sm);
+  border: none;
+  background: transparent;
+  color: var(--text-tertiary);
+  cursor: pointer;
+  flex-shrink: 0;
+}
+.mediaRemove:hover {
+  color: var(--danger);
+  background: var(--surface-3);
+}
+
 .tip {
   display: flex;
   gap: var(--space-2);

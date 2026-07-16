@@ -58,8 +58,13 @@ dev server only. No remote script or style origins.
 
 - Managed media uses **relative** paths under the per-project folder; absolute
   dev paths are never persisted into project data.
-- Path/filename validation and sanitization for imports land with the media
-  pipeline (`docs/MEDIA-PIPELINE.md`) — designed, not yet built.
+- **Media import validation is implemented** (MediaVault, `docs/MEDIAVAULT-INTEGRATION.md`):
+  every file must have a supported extension AND matching magic bytes
+  (extension-spoof rejection); empty and > 300 MB files are rejected; filenames are
+  sanitized to a basename and stored content-addressed (`<sha256>.<ext>`), so path
+  traversal and executable uploads are not possible; `resolveFile` guards against
+  escaping the vault root. The import dialog is restricted to the supported
+  extensions.
 - No shell strings are built from user input; no arbitrary command execution.
 
 ## Local-network upload security (designed — see PHONE-IMPORT-ARCHITECTURE.md)

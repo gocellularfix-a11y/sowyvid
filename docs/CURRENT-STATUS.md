@@ -17,10 +17,11 @@ Honest, per-feature state. Legend:
 |---|---|
 | `npm run typecheck` | ✅ passes (node + web) |
 | `npm run lint` | ✅ 0 warnings (`packages/**` vendored engines excluded) |
-| `npm test` | ✅ **38 passing** across 9 files (Northstar 7 files/14 tests + persistence 8 + creative integration 16) |
-| `npm run test:e2e` | ✅ 4 passing (incl. UI→engine end-to-end) |
+| `npm test` | ✅ **54 passing** across 11 files (Northstar 14 + MediaVault 5 + media 11 + persistence 8 + creative 16) |
+| `npm run test:e2e` | ✅ 4 passing (browser; incl. UI→engine end-to-end) |
+| `npm run test:e2e:electron` | ✅ 2 passing (real Electron: Northstar persistence + MediaVault import) |
 | `npm run build` | ✅ succeeds (main + preload + renderer) |
-| Real Electron launch | ✅ boots; migrated on-disk DB v1→v2 in place; engine IPC handlers live |
+| Clean install (fresh clone) | ✅ install + all checks pass (729 pkgs, no workspace issues) |
 
 ## Core phases
 
@@ -30,8 +31,10 @@ Honest, per-feature state. Legend:
 | 2 | Mockup analysis & design system | ✅ | `docs/MOCKUP-ANALYSIS.md` |
 | 3 | Interface shell (mockup-faithful) | ✅ | 4-step guided flow; screenshot-verified |
 | 4 | Project persistence (SQLite/Zod/migrations/history) | ✅ | sql.js port; atomic writes; **migration v2**; restart-survival tested |
-| A | **Northstar Creative Engine integration** | ✅ | Canonical creative brain; app uses it UI→IPC→persist; 30 tests |
+| A | **Northstar Creative Engine integration** | ✅ | Canonical creative brain; app uses it UI→IPC→persist; verified via real-Electron test |
+| B | **MediaVault media import** | ✅ | Real file import → validate → sha256 → dedup → managed copy → SQLite; UI wired; real-Electron test |
 | — | Branding decoupled | ✅ | `src/config/branding.ts` single source; `docs/BRANDING.md` |
+| — | Real-Electron verification | ✅ | `e2e-electron/` drives actual preload+IPC+SQLite for persistence & media |
 
 ## Engine vault (Jorge Engine Vault v1.0.0)
 
@@ -40,8 +43,8 @@ per phase.
 
 | Engine | Package | State | Phase |
 |---|---|---|---|
-| Northstar Creative | `@jorge-engines/northstar-creative` | ✅ **INTEGRATED** | A (now) |
-| MediaVault | `@jorge-engines/mediavault` | ⬜ DEFERRED | B (media import) |
+| Northstar Creative | `@jorge-engines/northstar-creative` | ✅ **INTEGRATED** | A |
+| MediaVault | `@jorge-engines/mediavault` | ✅ **INTEGRATED** | B (now) |
 | FrameLogic Visual | `@jorge-engines/framelogic-visual` | ⬜ DEFERRED | C (visual/render) |
 | SoundWeave Audio | `@jorge-engines/soundweave-audio` | ⬜ DEFERRED | D (audio) |
 | BridgeDrop LAN | `@jorge-engines/bridgedrop-lan` | ⬜ DEFERRED | E (phone import) |
@@ -64,14 +67,19 @@ independently re-run here — they will be validated as each is integrated.
   plan summary (scene count · duration). Runs through IPC+SQLite in Electron and via
   the isomorphic engine in browser preview.
 - Deterministic guarantee: identical inputs + seed → byte-identical plans (tested).
+- **Import real local files** (jpg/png/webp/svg/mp4/mov/wav/mp3) via "Este equipo":
+  validated (magic-byte + size), SHA-256 content-addressed, deduplicated, copied
+  into managed project storage, listed in the UI, and persisted across restart.
+  Imported media feeds Northstar as stable IDs. Verified by a real-Electron test.
 
 ## What does NOT work yet (not pretended to)
 
 - No rendered video — the Remotion renderer (FrameLogic phase) is deferred; the plan
   is validated + persisted but not drawn to frames. "Descargar video" is marked
   unavailable.
-- Real media import, thumbnails, metadata (MediaVault, Phase B).
-- Audio, phone upload, real AI, social publishing (Phases D–F; social 🔒 blocked).
+- No thumbnails / video-duration probing yet (media tiles show icon + filename).
+- Phone upload (`Mi teléfono`) — deferred to BridgeDrop (Phase E), marked unavailable.
+- Audio, real AI, social publishing (Phases D/F; social 🔒 blocked).
 
 ## Known issues / caveats
 
@@ -91,7 +99,9 @@ independently re-run here — they will be validated as each is integrated.
 
 ## Recommended next step
 
-**Phase B — integrate MediaVault** (real media import: magic-byte validation,
-SHA-256 content IDs, dedup, managed byte-copy storage). It gives Northstar real
-media metadata to assign and unblocks the first genuinely media-driven commercial,
-which is the biggest remaining jump toward a publish-ready result.
+**Phase C — integrate FrameLogic Visual Engine + a Remotion preview.** With real
+media (MediaVault) now feeding validated creative plans (Northstar), the biggest
+remaining jump is turning a `CommercialRenderPlan` into something the owner can
+*see*: add FrameLogic's renderer-neutral visual direction and a Remotion
+`<Player>` preview of the scene plan. (A smaller, high-value intermediate step is
+thumbnail/poster generation for imported media.)

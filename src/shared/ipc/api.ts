@@ -3,6 +3,7 @@ import type { Project, CreateProjectInput, CreativeSelection } from '../domain/p
 import type { CreativePlan, CommercialRenderPlan } from '@jorge-engines/northstar-creative'
 import type { CreativeFamilyInfo } from '@features/creative/families'
 import type { SowyvidRendererPlan } from '@features/creative/creativePlanToRenderer'
+import type { MediaImportResult } from '@features/media/types'
 
 /**
  * The typed surface exposed to the renderer via the secure preload bridge
@@ -39,6 +40,16 @@ export interface SowyvidBridge {
     get(id: string): Promise<Result<Project | null>>
     save(project: Project): Promise<Result<Project>>
     delete(id: string): Promise<Result<boolean>>
+  }
+  media: {
+    /**
+     * Import local files into the project's managed storage. With `paths`, those
+     * files are imported directly (used by tests/automation); without, the main
+     * process opens the OS file picker.
+     */
+    import(input: { projectId: string; paths?: string[] }): Promise<Result<MediaImportResult>>
+    /** Remove a managed media asset from the project and vault. */
+    remove(input: { projectId: string; mediaId: string }): Promise<Result<Project>>
   }
   engine: {
     /** Owner-facing creative families for the "choose your style" step. */

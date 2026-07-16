@@ -19,6 +19,10 @@ const bridge: SowyvidBridge = {
     save: (project) => ipcRenderer.invoke(IPC.ProjectUpdate, project),
     delete: (id) => ipcRenderer.invoke(IPC.ProjectDelete, id),
   },
+  media: {
+    import: (input) => ipcRenderer.invoke(IPC.MediaImport, input),
+    remove: (input) => ipcRenderer.invoke(IPC.MediaRemove, input),
+  },
   engine: {
     families: () => ipcRenderer.invoke(IPC.EngineFamilies),
     developConcepts: (input) => ipcRenderer.invoke(IPC.EngineDevelopConcepts, input),

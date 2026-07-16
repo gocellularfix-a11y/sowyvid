@@ -14,6 +14,7 @@ const alias = {
     'packages/northstar-creative-engine/src/adapters/remotion.ts',
   ),
   '@jorge-engines/northstar-creative': resolve('packages/northstar-creative-engine/src/index.ts'),
+  '@jorge-engines/mediavault': resolve('packages/mediavault-engine/src/index.ts'),
 }
 
 export default defineConfig({

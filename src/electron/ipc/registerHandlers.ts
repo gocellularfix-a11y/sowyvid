@@ -1,9 +1,16 @@
-import { app } from 'electron'
+import { app, dialog, BrowserWindow } from 'electron'
 import { z } from 'zod'
 import { IPC } from '@shared/ipc/channels'
 import { type CompiledConceptResult } from '@shared/ipc/api'
 import { Project, CreateProjectInput } from '@shared/domain/project'
 import { ok, err } from '@shared/result'
+import {
+  importMedia,
+  removeMedia,
+  type MediaImportInput,
+} from '@features/media/mediaImport.node'
+import type { MediaImportResult } from '@features/media/types'
+import { SUPPORTED_EXTENSIONS } from '@features/media/limits'
 import {
   developProjectConcepts,
   compileProjectConcept,
@@ -22,6 +29,14 @@ import { handle } from './registry'
 export interface HandlerContext {
   db: PersistentDatabase
   repo: ProjectRepository
+}
+
+function openMediaDialogOptions(): Electron.OpenDialogOptions {
+  return {
+    title: 'Agregar fotos y videos',
+    properties: ['openFile', 'multiSelections'],
+    filters: [{ name: 'Fotos, videos y audio', extensions: [...SUPPORTED_EXTENSIONS] }],
+  }
 }
 
 /** Create the managed folder tree for a project (media/thumbnails/audio/...). */
@@ -71,6 +86,51 @@ export function registerHandlers(ctx: HandlerContext): void {
     await db.persist()
     return ok(existed)
   })
+
+  // ---- Media import (MediaVault) ----
+  handle(
+    IPC.MediaImport,
+    z.object({ projectId: z.string(), paths: z.array(z.string()).optional() }),
+    async ({ projectId, paths }) => {
+      const project = repo.get(projectId)
+      if (!project) return err('NOT_FOUND', `Project not found: ${projectId}`)
+
+      let filePaths = paths
+      if (!filePaths) {
+        const parent = BrowserWindow.getFocusedWindow()
+        const picked = await (parent
+          ? dialog.showOpenDialog(parent, openMediaDialogOptions())
+          : dialog.showOpenDialog(openMediaDialogOptions()))
+        if (picked.canceled || picked.filePaths.length === 0) {
+          const empty: MediaImportResult = { canceled: true, outcomes: [], project }
+          return ok(empty)
+        }
+        filePaths = picked.filePaths
+      }
+
+      const inputs: MediaImportInput[] = filePaths.map((path) => ({ kind: 'path', path }))
+      const vaultRoot = join(projectDir(projectId), 'media')
+      const summary = await importMedia(vaultRoot, project.media, inputs)
+      const saved = repo.save({ ...project, media: summary.media })
+      await db.persist()
+      const result: MediaImportResult = { canceled: false, outcomes: summary.outcomes, project: saved }
+      return ok(result)
+    },
+  )
+
+  handle(
+    IPC.MediaRemove,
+    z.object({ projectId: z.string(), mediaId: z.string() }),
+    async ({ projectId, mediaId }) => {
+      const project = repo.get(projectId)
+      if (!project) return err('NOT_FOUND', `Project not found: ${projectId}`)
+      const vaultRoot = join(projectDir(projectId), 'media')
+      const media = await removeMedia(vaultRoot, project.media, mediaId)
+      const saved = repo.save({ ...project, media })
+      await db.persist()
+      return ok(saved)
+    },
+  )
 
   // ---- Creative engine ----
   handle(IPC.EngineFamilies, z.any(), () => ok(listCreativeFamilies()))

@@ -36,6 +36,8 @@ is ever stored in the source repo.
   database\sowyvid.db              sql.js database (atomic writes)
   projects\<project-id>\
     media\  thumbnails\  audio\  renders\  temp\
+      media\files\<sha256>.<ext>       MediaVault content-addressed managed copies
+      media\records\media_<sha256>.json MediaVault metadata records (atomic)
   templates\   music\   logs\   cache\
 ```
 

@@ -5,9 +5,12 @@ import { TextArea } from '../../ui/TextInput'
 import { StepBadge } from '../../ui/Primitives'
 import { MediaThumb, type ThumbKind } from '../../ui/MediaThumb'
 import { useToast } from '../../ui/toastContext'
-import { getBridge } from '../../bridge'
+import { getBridge, isBrowserPreview } from '../../bridge'
+import type { MediaAsset } from '@shared/domain/media'
 import { copy } from '../../content/copy'
 import styles from './HomeWorkspace.module.css'
+
+const KIND_ICON = { image: 'image', logo: 'image', video: 'play', audio: 'monitor' } as const
 
 type GenState = 'idle' | 'generating' | 'ready'
 
@@ -35,17 +38,79 @@ export function HomeWorkspace(): JSX.Element {
   const [styleId, setStyleId] = useState<string>(copy.step3.styles[0].id)
   const [gen, setGen] = useState<GenState>('idle')
   const [result, setResult] = useState<CommercialResult | null>(null)
+  const [projectId, setProjectId] = useState<string | null>(null)
+  const [media, setMedia] = useState<MediaAsset[]>([])
+  const [importing, setImporting] = useState(false)
 
   const canGenerate = description.trim().length > 0
 
   const soon = () => toast.show(copy.common.unavailableHint, 'info')
 
+  /** Ensure a draft project exists to attach media/brief to; returns its id. */
+  const ensureProject = async (): Promise<string> => {
+    if (projectId) return projectId
+    const created = await getBridge().projects.create({
+      name: description.trim().slice(0, 60) || 'Comercial',
+      brief: { productOrService: description.trim() },
+    })
+    if (!created.ok) throw new Error(created.error.message)
+    setProjectId(created.value.id)
+    setMedia(created.value.media)
+    return created.value.id
+  }
+
+  /** Import local files through MediaVault (Electron only). */
+  const onImport = async (): Promise<void> => {
+    if (isBrowserPreview) {
+      toast.show('Agregar archivos está disponible en la app de escritorio.', 'info')
+      return
+    }
+    setImporting(true)
+    try {
+      const id = await ensureProject()
+      const res = await getBridge().media.import({ projectId: id })
+      if (!res.ok) {
+        toast.show('No pudimos agregar tus archivos.', 'error')
+        return
+      }
+      if (res.value.canceled) return
+      setMedia(res.value.project.media)
+
+      const outcomes = res.value.outcomes
+      const count = (s: string) => outcomes.filter((o) => o.status === s).length
+      const imported = count('imported')
+      const dup = count('duplicate')
+      const rejected = outcomes.length - imported - dup
+      if (imported > 0) {
+        toast.show(
+          `${imported} archivo(s) agregado(s)${dup > 0 ? `, ${dup} ya estaban` : ''}.`,
+          'success',
+        )
+      } else if (dup > 0 && rejected === 0) {
+        toast.show('Ese material ya estaba agregado.', 'info')
+      }
+      if (rejected > 0) {
+        toast.show(`${rejected} archivo(s) no compatibles o muy pesados.`, 'error')
+      }
+    } catch {
+      toast.show('No pudimos agregar tus archivos.', 'error')
+    } finally {
+      setImporting(false)
+    }
+  }
+
+  const onRemoveMedia = async (mediaId: string): Promise<void> => {
+    if (!projectId) return
+    const res = await getBridge().media.remove({ projectId, mediaId })
+    if (res.ok) setMedia(res.value.media)
+  }
+
   /**
    * Drives the REAL Northstar creative engine through the secure bridge:
-   * create project → develop concepts → compile the selected style → persist.
-   * In Electron this crosses IPC to the main process + SQLite; in browser
-   * preview it runs the isomorphic engine in-memory. This is not yet a rendered
-   * video — the Remotion renderer (FrameLogic phase) is still deferred.
+   * ensure project → sync brief → develop concepts → compile the selected style
+   * → persist. In Electron this crosses IPC to the main process + SQLite (and
+   * uses any imported media); in browser preview it runs the isomorphic engine
+   * in-memory. Not yet a rendered video — the Remotion renderer is deferred.
    */
   const generate = async (): Promise<void> => {
     if (!canGenerate) {
@@ -55,21 +120,23 @@ export function HomeWorkspace(): JSX.Element {
     setGen('generating')
     try {
       const bridge = getBridge()
-      const created = await bridge.projects.create({
-        name: description.trim().slice(0, 60) || 'Comercial',
-        brief: { productOrService: description.trim() },
-      })
-      if (!created.ok) throw new Error(created.error.message)
-      const projectId = created.value.id
+      const id = await ensureProject()
 
-      const concepts = await bridge.engine.developConcepts({ projectId, count: 5 })
+      const current = await bridge.projects.get(id)
+      if (current.ok && current.value) {
+        await bridge.projects.save({
+          ...current.value,
+          brief: { ...current.value.brief, productOrService: description.trim() },
+        })
+      }
+
+      const concepts = await bridge.engine.developConcepts({ projectId: id, count: 5 })
       if (!concepts.ok || concepts.value.length === 0) throw new Error('No concepts')
 
       const wantedFamily = STYLE_FAMILY[styleId]
-      const chosen =
-        concepts.value.find((c) => c.family === wantedFamily) ?? concepts.value[0]!
+      const chosen = concepts.value.find((c) => c.family === wantedFamily) ?? concepts.value[0]!
 
-      const compiled = await bridge.engine.compile({ projectId, conceptId: chosen.conceptId })
+      const compiled = await bridge.engine.compile({ projectId: id, conceptId: chosen.conceptId })
       if (!compiled.ok) throw new Error(compiled.error.message)
 
       setResult({
@@ -115,12 +182,43 @@ export function HomeWorkspace(): JSX.Element {
             <h2 className={styles.stepTitle}>{copy.step2.title}</h2>
           </div>
           <p className={styles.stepSubtitle}>{copy.step2.subtitle}</p>
-          <button className={styles.dropzone} onClick={soon} type="button">
-            <Icon name="upload-cloud" size={40} />
-            <span className={styles.dropHint}>{copy.step2.dropzone}</span>
+          <button
+            className={styles.dropzone}
+            onClick={onImport}
+            type="button"
+            disabled={importing}
+            data-testid="dropzone"
+          >
+            <Icon name={importing ? 'refresh' : 'upload-cloud'} size={40} />
+            <span className={styles.dropHint}>
+              {importing ? 'Procesando…' : copy.step2.dropzone}
+            </span>
           </button>
+          {media.length > 0 && (
+            <div className={styles.mediaGrid} data-testid="media-grid">
+              {media.map((asset) => (
+                <div key={asset.id} className={styles.mediaTile} title={asset.originalName}>
+                  <Icon name={KIND_ICON[asset.kind]} size={20} />
+                  <span className={styles.mediaName}>{asset.originalName}</span>
+                  <button
+                    type="button"
+                    className={styles.mediaRemove}
+                    aria-label={`Quitar ${asset.originalName}`}
+                    onClick={() => void onRemoveMedia(asset.id)}
+                  >
+                    <Icon name="x" size={14} />
+                  </button>
+                </div>
+              ))}
+            </div>
+          )}
           <div className={styles.sourceRow}>
-            <button className={styles.sourceBtn} onClick={soon} type="button">
+            <button
+              className={styles.sourceBtn}
+              onClick={onImport}
+              type="button"
+              disabled={importing}
+            >
               <Icon name="folder" size={22} />
               <span>{copy.step2.sources.thisDevice}</span>
             </button>

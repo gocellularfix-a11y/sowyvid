@@ -29,7 +29,8 @@
       "@jorge-engines/northstar-creative": ["packages/northstar-creative-engine/src/index.ts"],
       "@jorge-engines/northstar-creative/remotion": [
         "packages/northstar-creative-engine/src/adapters/remotion.ts"
-      ]
+      ],
+      "@jorge-engines/mediavault": ["packages/mediavault-engine/src/index.ts"]
     }
   }
 }

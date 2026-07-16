@@ -50,21 +50,23 @@ Status legend: `AVAILABLE` `AUDITED` `READY` `INTEGRATED` `DEFERRED` `BLOCKED` `
 | Adapter required | `ProjectToCreativeInputAdapter`, `CreativeEngineService`, `CreativePlanToRendererAdapter` (in `src/features/creative/`) |
 | Must not import | React, Electron, SQLite, UI, product branding, filesystem |
 
-## 2. MediaVault Engine — **DEFERRED**
+## 2. MediaVault Engine — **INTEGRATED**
 
 | Field | Value |
 |---|---|
 | Package | `@jorge-engines/mediavault` v1.0.0 |
 | Source dir | `packages/mediavault-engine` (src: contracts, probe, classify, store, catalog) |
 | Purpose | Managed media import: magic-byte validation, SHA-256 content IDs, dedup, byte-copy into managed storage, EN/ES/PT classification, license-gated catalog selection |
-| Public API | `contracts`, `probe` (signature detect), `classify`, `store` (import/dedup), `catalog` (license-gated selection) |
-| Input/Output | File bytes + metadata → managed asset records with content IDs |
-| Dependencies | `zod` |
-| Test/Build (vault docs) | 1 file / 5 tests PASS · build PASS · 0 vulns |
-| SowyVid phase | **B (media import)** |
-| Integrated | No — deferred until Phase 6 (media pipeline) |
-| Adapter required | `MediaImportAdapter`, `ManagedStorageAdapter`, `MediaMetadataRepository`, `MediaIdResolver` |
-| Must not import | React, Electron, database, cloud, AI |
+| Public API | `MediaVault` class (`importBytes`/`importFile`/`get`/`list`/`resolveFile`/`update`/`remove`), `probe` (signature detect), `classify`, `catalog` |
+| Input/Output | File bytes + metadata → `MediaRecord` (content-addressed, managed copy) |
+| Dependencies | `zod` (node `fs`/`crypto`) |
+| Test result | 5 own tests + **11 host tests** PASS under SowyVid vitest; real-Electron import test PASS |
+| Build result | Compiled by SowyVid's build (consumed from source) |
+| Prod vulnerabilities | 0 (vault audit) |
+| SowyVid phase | **B (media import) — DONE** |
+| Integrated | **Yes** — see `docs/MEDIAVAULT-INTEGRATION.md` |
+| Adapters | `src/features/media/` (limits, `mediaImport.node.ts`, types) + `media:import`/`media:remove` IPC |
+| Must not import | React, Electron, database, Northstar, cloud, AI, branding |
 
 ## 3. FrameLogic Visual Engine — **DEFERRED**
 

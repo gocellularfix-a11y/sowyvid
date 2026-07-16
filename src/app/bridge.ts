@@ -83,6 +83,13 @@ function createMockBridge(): SowyvidBridge {
       },
       delete: (id) => Promise.resolve(ok(store.delete(id))),
     },
+    media: {
+      import: () =>
+        Promise.resolve(
+          err('UNSUPPORTED', 'La importación de archivos solo está disponible en la app de escritorio.'),
+        ),
+      remove: () => Promise.resolve(err('UNSUPPORTED', 'No disponible en vista previa.')),
+    },
     engine: {
       families: () => Promise.resolve(ok(listCreativeFamilies())),
       developConcepts: ({ projectId, count }) => {

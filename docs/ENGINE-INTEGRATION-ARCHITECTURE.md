@@ -56,7 +56,7 @@ ESLint (third-party conventions) but **is** typechecked and tested.
 ```
 src/
   features/creative/       Northstar adapters + service (Phase A, done)
-  adapters/media/          MediaVault adapters      (Phase B, deferred)
+  features/media/          MediaVault adapters + service (Phase B, done)
   adapters/visual/         FrameLogic adapters      (Phase C, deferred)
   adapters/audio/          SoundWeave adapters      (Phase D, deferred)
   adapters/phone/          BridgeDrop adapters      (Phase E, deferred)

@@ -17,6 +17,7 @@ export default defineConfig({
       '@jorge-engines/northstar-creative': resolve(
         'packages/northstar-creative-engine/src/index.ts',
       ),
+      '@jorge-engines/mediavault': resolve('packages/mediavault-engine/src/index.ts'),
     },
   },
   test: {
@@ -25,6 +26,7 @@ export default defineConfig({
     include: [
       'src/**/*.{test,spec}.ts',
       'packages/northstar-creative-engine/tests/**/*.test.ts',
+      'packages/mediavault-engine/tests/**/*.test.ts',
     ],
     exclude: ['node_modules', 'out', 'dist', 'e2e'],
     coverage: {

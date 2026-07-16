@@ -14,6 +14,7 @@
     "src/shared/**/*.ts",
     "src/config/**/*.ts",
     "packages/northstar-creative-engine/src/**/*.ts",
+    "packages/mediavault-engine/src/**/*.ts",
     "src/features/**/*.ts",
     "src/features/**/*.node.ts",
     "electron.vite.config.ts",
