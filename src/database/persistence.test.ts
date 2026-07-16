@@ -1,6 +1,6 @@
 import { describe, it, expect, beforeEach } from 'vitest'
 import { createSqlJsDatabase } from './sqljs'
-import { runMigrations, currentSchemaVersion } from './migrations'
+import { runMigrations, currentSchemaVersion, MIGRATIONS } from './migrations'
 import { ProjectRepository } from './projectRepository'
 import { resolveWasmPath } from './index'
 import type { Database } from './port'
@@ -16,11 +16,14 @@ async function freshDb(bytes?: Uint8Array): Promise<Database> {
 describe('migrations', () => {
   it('applies to the latest version and are idempotent', async () => {
     const db = await freshDb()
-    expect(currentSchemaVersion(db)).toBe(2)
+    // Track the migration list itself, so adding a migration cannot silently
+    // leave this test asserting an old version.
+    const latest = MIGRATIONS[MIGRATIONS.length - 1]!.version
+    expect(currentSchemaVersion(db)).toBe(latest)
     // Running again must not error or duplicate.
     const applied = runMigrations(db)
-    expect(applied).toBe(2)
-    expect(currentSchemaVersion(db)).toBe(2)
+    expect(applied).toBe(latest)
+    expect(currentSchemaVersion(db)).toBe(latest)
   })
 })
 
@@ -88,19 +91,64 @@ describe('ProjectRepository', () => {
     expect(repo.get(project.id)?.name).toBe('V1')
   })
 
-  it('tracks export history', () => {
+  it('tracks the full export lifecycle: begin → complete', () => {
     const project = repo.create({ name: 'Exportado' })
-    repo.addExport(project.id, {
-      relPath: 'renders/out_1.mp4',
-      platform: 'instagram-reel',
+    const started = repo.beginExport({
+      projectId: project.id,
+      preset: 'instagram-reel',
+      outputPath: 'C:\\Users\\owner\\Videos\\comercial.mp4',
+      fingerprint: 'fp_abc',
+    })
+    expect(started.status).toBe('rendering')
+    expect(started.completedAt).toBeNull()
+
+    const done = repo.completeExport(started.id, {
       width: 1080,
       height: 1920,
+      fps: 30,
       durationSec: 20,
       bytes: 4_500_000,
+      videoCodec: 'h264',
+      audioCodec: 'aac',
+      fingerprint: 'fp_abc',
+      outputPath: 'C:\\Users\\owner\\Videos\\comercial.mp4',
     })
+    expect(done?.status).toBe('completed')
+    expect(done?.completedAt).not.toBeNull()
+    expect(done?.videoCodec).toBe('h264')
+    expect(done?.audioCodec).toBe('aac')
+    expect(done?.fingerprint).toBe('fp_abc')
+    expect(done?.bytes).toBe(4_500_000)
+
     const exports = repo.listExports(project.id)
     expect(exports.length).toBe(1)
-    expect(exports[0]?.relPath).toBe('renders/out_1.mp4')
+    expect(exports[0]?.outputPath).toBe('C:\\Users\\owner\\Videos\\comercial.mp4')
+  })
+
+  it('records failures and cancellations with stable diagnostic codes', () => {
+    const project = repo.create({ name: 'Fallido' })
+    const a = repo.beginExport({ projectId: project.id, preset: 'tiktok', outputPath: 'X:\\out.mp4', fingerprint: null })
+    const failed = repo.failExport(a.id, 'output-unavailable')
+    expect(failed?.status).toBe('failed')
+    expect(failed?.failureCode).toBe('output-unavailable')
+
+    const b = repo.beginExport({ projectId: project.id, preset: 'tiktok', outputPath: 'C:\\out.mp4', fingerprint: null })
+    const canceled = repo.failExport(b.id, 'canceled')
+    expect(canceled?.status).toBe('canceled')
+    // Both attempts stay in history — it tells the truth, not just successes.
+    expect(repo.listExports(project.id).length).toBe(2)
+  })
+
+  it('repairs phantom in-progress jobs on startup (app died mid-render)', () => {
+    const project = repo.create({ name: 'Interrumpido' })
+    repo.beginExport({ projectId: project.id, preset: 'youtube', outputPath: 'C:\\out.mp4', fingerprint: null })
+    const repaired = repo.markInterruptedExports()
+    expect(repaired).toBe(1)
+    const [record] = repo.listExports(project.id)
+    expect(record?.status).toBe('failed')
+    expect(record?.failureCode).toBe('interrupted')
+    // Idempotent: a second pass finds nothing.
+    expect(repo.markInterruptedExports()).toBe(0)
   })
 })
 
@@ -110,13 +158,22 @@ describe('persistence across restart', () => {
     const repo1 = new ProjectRepository(db1)
     const created = repo1.create({ name: 'Persistente' })
     const withHistory = repo1.save({ ...created, name: 'Persistente v2' })
-    repo1.addExport(created.id, {
-      relPath: 'renders/a.mp4',
-      platform: 'tiktok',
+    const started = repo1.beginExport({
+      projectId: created.id,
+      preset: 'tiktok',
+      outputPath: 'C:\\Users\\owner\\Videos\\a.mp4',
+      fingerprint: 'fp_1',
+    })
+    repo1.completeExport(started.id, {
       width: 1080,
       height: 1920,
+      fps: 30,
       durationSec: 15,
       bytes: 1000,
+      videoCodec: 'h264',
+      audioCodec: 'aac',
+      fingerprint: 'fp_1',
+      outputPath: 'C:\\Users\\owner\\Videos\\a.mp4',
     })
     const bytes = db1.export()
     db1.close()
@@ -127,6 +184,11 @@ describe('persistence across restart', () => {
     const reopened = repo2.get(created.id)
     expect(reopened?.name).toBe('Persistente v2')
     expect(withHistory.id).toBe(created.id)
-    expect(repo2.listExports(created.id).length).toBe(1)
+    const survived = repo2.listExports(created.id)
+    expect(survived.length).toBe(1)
+    // The FULL record survives restart, not just its existence.
+    expect(survived[0]?.status).toBe('completed')
+    expect(survived[0]?.outputPath).toBe('C:\\Users\\owner\\Videos\\a.mp4')
+    expect(survived[0]?.audioCodec).toBe('aac')
   })
 })

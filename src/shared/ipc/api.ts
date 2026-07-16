@@ -6,6 +6,10 @@ import type { SowyvidRendererPlan } from '@features/creative/creativePlanToRende
 import type { MediaImportResult, MediaRemoveResult } from '@features/media/types'
 import type { VisualPlan } from '@features/visual/visualPlan'
 import type { AudioPlan } from '@features/audio/audioPlan'
+import type { ExportRecordWithFileState } from '../domain/exportRecord'
+import type { RenderJobSnapshot } from '@features/render/jobRegistry'
+import type { RenderReadiness } from '@features/render/readiness'
+import type { ExportPresetId, ExportPresetInfo } from '@features/render/exportPresets'
 
 /**
  * The typed surface exposed to the renderer via the secure preload bridge
@@ -32,6 +36,32 @@ export interface CompiledConceptResult {
   /** SoundWeave's decisions for this commercial; carries engine name/version. */
   audioPlan: AudioPlan
   selection: CreativeSelection
+}
+
+/** Outcome of asking to start (or retry) a render. */
+export interface RenderStartResult {
+  /** True when the owner dismissed the save dialog — no job was created. */
+  canceled: boolean
+  job: RenderJobSnapshot | null
+}
+
+export interface RenderStatusResult {
+  /** The active job for this project, if any. */
+  active: RenderJobSnapshot | null
+  /** Whether "Descargar video" may be enabled, with Spanish blockers when not. */
+  readiness: RenderReadiness
+  /** Preset catalog with per-plan renderability, plus the default selection. */
+  presets: Array<ExportPresetInfo & { renderable: boolean }>
+  defaultPreset: ExportPresetId
+}
+
+/** Outcome of open-file / open-folder. */
+export interface OpenExportResult {
+  opened: boolean
+  /** False when the exported file was deleted after the fact. */
+  fileExists: boolean
+  /** Owner-facing Spanish note when not opened. */
+  message: string | null
 }
 
 export interface SowyvidBridge {
@@ -62,6 +92,21 @@ export interface SowyvidBridge {
       mediaId: string
       force?: boolean
     }): Promise<Result<MediaRemoveResult>>
+  }
+  render: {
+    /**
+     * Start an export. The renderer sends ONLY ids — never paths, dimensions,
+     * or composition data. Main reconstructs and validates the render request
+     * from persisted project data and opens the native save dialog itself.
+     */
+    start(input: { projectId: string; presetId: ExportPresetId }): Promise<Result<RenderStartResult>>
+    cancel(input: { jobId: string }): Promise<Result<boolean>>
+    status(input: { projectId: string }): Promise<Result<RenderStatusResult>>
+    listHistory(input: { projectId: string }): Promise<Result<ExportRecordWithFileState[]>>
+    /** Re-run a past export with its preset, into its folder (numbered name). */
+    retry(input: { exportId: string }): Promise<Result<RenderStartResult>>
+    openFile(input: { exportId: string }): Promise<Result<OpenExportResult>>
+    openFolder(input: { exportId: string }): Promise<Result<OpenExportResult>>
   }
   engine: {
     /** Owner-facing creative families for the "choose your style" step. */

@@ -9,6 +9,7 @@ import {
   CommercialBrief,
   ProjectVersion,
 } from '@shared/domain/project'
+import { ExportRecord, type ExportFailureCode } from '@shared/domain/exportRecord'
 import type { Database } from './port'
 
 interface ProjectRow {
@@ -16,20 +17,49 @@ interface ProjectRow {
   data: string
 }
 
-interface ExportRecordInput {
-  relPath: string
-  platform: string
+interface ExportRow {
+  id: string
+  project_id: string
+  created_at: string
+  completed_at: string | null
+  status: string
+  preset: string
   width: number
   height: number
-  durationSec: number
+  fps: number
+  duration_sec: number
+  output_path: string
   bytes: number
+  video_codec: string | null
+  audio_codec: string | null
+  fingerprint: string | null
+  failure_code: string | null
 }
 
-export interface ExportRecord extends ExportRecordInput {
-  id: string
-  projectId: string
-  createdAt: string
+function exportFromRow(row: ExportRow): ExportRecord {
+  return ExportRecord.parse({
+    id: row.id,
+    projectId: row.project_id,
+    createdAt: row.created_at,
+    completedAt: row.completed_at,
+    status: row.status,
+    preset: row.preset,
+    width: row.width,
+    height: row.height,
+    fps: row.fps,
+    durationSec: row.duration_sec,
+    outputPath: row.output_path,
+    bytes: row.bytes,
+    videoCodec: row.video_codec,
+    audioCodec: row.audio_codec,
+    fingerprint: row.fingerprint,
+    failureCode: row.failure_code,
+  })
 }
+
+const EXPORT_COLUMNS = `id, project_id, created_at, completed_at, status, preset,
+  width, height, fps, duration_sec, output_path, bytes, video_codec, audio_codec,
+  fingerprint, failure_code`
 
 /**
  * Persists projects and their history. Every value crossing the boundary is
@@ -183,58 +213,122 @@ export class ProjectRepository {
   }
 
   // ---- Export history ----
+  //
+  // One row per render ATTEMPT, created when the job starts and finalized when
+  // it ends — so history tells the truth about failures and cancellations, not
+  // just successes, and a job interrupted by an app crash is visible.
 
-  addExport(projectId: string, record: ExportRecordInput): ExportRecord {
-    const entry: ExportRecord = {
+  /** Record a render job the moment it starts. */
+  beginExport(input: {
+    projectId: string
+    preset: string
+    outputPath: string
+    fingerprint: string | null
+  }): ExportRecord {
+    const entry = ExportRecord.parse({
       id: `exp_${nanoid(10)}`,
-      projectId,
+      projectId: input.projectId,
       createdAt: this.now(),
-      ...record,
-    }
+      completedAt: null,
+      status: 'rendering',
+      preset: input.preset,
+      width: 0,
+      height: 0,
+      fps: 0,
+      durationSec: 0,
+      outputPath: input.outputPath,
+      bytes: 0,
+      videoCodec: null,
+      audioCodec: null,
+      fingerprint: input.fingerprint,
+      failureCode: null,
+    })
+    // `rel_path`/`platform` are legacy v1 columns (NOT NULL); mirror the new
+    // fields into them so an old reader still sees something meaningful.
     this.db.run(
       `INSERT INTO export_history
-       (id, project_id, created_at, rel_path, platform, width, height, duration_sec, bytes)
-       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+       (id, project_id, created_at, rel_path, platform, width, height, duration_sec, bytes,
+        completed_at, status, preset, fps, output_path, video_codec, audio_codec, fingerprint, failure_code)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
       [
-        entry.id,
-        projectId,
-        entry.createdAt,
-        entry.relPath,
-        entry.platform,
-        entry.width,
-        entry.height,
-        entry.durationSec,
-        entry.bytes,
+        entry.id, entry.projectId, entry.createdAt, entry.outputPath, entry.preset,
+        entry.width, entry.height, entry.durationSec, entry.bytes,
+        entry.completedAt, entry.status, entry.preset, entry.fps, entry.outputPath,
+        entry.videoCodec, entry.audioCodec, entry.fingerprint, entry.failureCode,
       ],
     )
     return entry
   }
 
-  listExports(projectId: string): ExportRecord[] {
-    const rows = this.db.all<{
-      id: string
-      project_id: string
-      created_at: string
-      rel_path: string
-      platform: string
+  /** Finalize a successful render with its measured facts. */
+  completeExport(
+    exportId: string,
+    result: {
       width: number
       height: number
-      duration_sec: number
+      fps: number
+      durationSec: number
       bytes: number
-    }>(
-      'SELECT * FROM export_history WHERE project_id = ? ORDER BY created_at DESC',
+      videoCodec: string | null
+      audioCodec: string | null
+      fingerprint: string | null
+      outputPath: string
+    },
+  ): ExportRecord | undefined {
+    this.db.run(
+      `UPDATE export_history SET
+         status = 'completed', completed_at = ?, width = ?, height = ?, fps = ?,
+         duration_sec = ?, bytes = ?, video_codec = ?, audio_codec = ?,
+         fingerprint = ?, output_path = ?, rel_path = ?
+       WHERE id = ?`,
+      [
+        this.now(), result.width, result.height, result.fps,
+        result.durationSec, result.bytes, result.videoCodec, result.audioCodec,
+        result.fingerprint, result.outputPath, result.outputPath, exportId,
+      ],
+    )
+    return this.getExport(exportId)
+  }
+
+  /** Finalize a failed or canceled render with a stable diagnostic code. */
+  failExport(
+    exportId: string,
+    failureCode: ExportFailureCode,
+    status: 'failed' | 'canceled' = failureCode === 'canceled' ? 'canceled' : 'failed',
+  ): ExportRecord | undefined {
+    this.db.run(
+      `UPDATE export_history SET status = ?, completed_at = ?, failure_code = ? WHERE id = ?`,
+      [status, this.now(), failureCode, exportId],
+    )
+    return this.getExport(exportId)
+  }
+
+  getExport(exportId: string): ExportRecord | undefined {
+    const row = this.db.get<ExportRow>(
+      `SELECT ${EXPORT_COLUMNS} FROM export_history WHERE id = ?`,
+      [exportId],
+    )
+    return row ? exportFromRow(row) : undefined
+  }
+
+  listExports(projectId: string): ExportRecord[] {
+    const rows = this.db.all<ExportRow>(
+      `SELECT ${EXPORT_COLUMNS} FROM export_history WHERE project_id = ? ORDER BY created_at DESC`,
       [projectId],
     )
-    return rows.map((r) => ({
-      id: r.id,
-      projectId: r.project_id,
-      createdAt: r.created_at,
-      relPath: r.rel_path,
-      platform: r.platform,
-      width: r.width,
-      height: r.height,
-      durationSec: r.duration_sec,
-      bytes: r.bytes,
-    }))
+    return rows.map(exportFromRow)
+  }
+
+  /**
+   * Startup repair: any row still 'rendering' means the app died mid-render.
+   * Mark it failed/interrupted so history never shows a phantom active job —
+   * and so a fresh render is never blocked by a ghost.
+   */
+  markInterruptedExports(): number {
+    const rows = this.db.all<{ id: string }>(
+      `SELECT id FROM export_history WHERE status = 'rendering'`,
+    )
+    for (const row of rows) this.failExport(row.id, 'interrupted', 'failed')
+    return rows.length
   }
 }

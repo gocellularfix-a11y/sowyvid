@@ -29,9 +29,14 @@ export const IPC = {
   MediaList: 'media:list',
   MediaRemove: 'media:remove',
 
-  // Rendering (Phase 9)
+  // Rendering (owner MP4 export)
   RenderStart: 'render:start',
   RenderCancel: 'render:cancel',
+  RenderStatus: 'render:status',
+  RenderListHistory: 'render:listHistory',
+  RenderRetry: 'render:retry',
+  RenderOpenFile: 'render:openFile',
+  RenderOpenFolder: 'render:openFolder',
   RenderProgress: 'render:progress', // main -> renderer event
 
   // Phone import (Phase 10)

@@ -17,6 +17,12 @@ export default defineConfig({
       outDir: 'out/main',
       lib: { entry: resolve('src/electron/main.ts') },
       rollupOptions: {
+        // `@remotion/bundler` is a DEV dependency loaded via dynamic import on
+        // the development render path only; externalizeDepsPlugin externalizes
+        // production deps, so without this Rollup would inline webpack (and
+        // fail on its eval/CJS shims). The packaged app never loads it — it
+        // renders from the prebuilt bundle in resources.
+        external: ['@remotion/bundler'],
         output: { format: 'es', entryFileNames: 'index.js' },
       },
     },

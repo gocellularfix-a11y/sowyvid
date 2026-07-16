@@ -28,6 +28,15 @@ const bridge: SowyvidBridge = {
     developConcepts: (input) => ipcRenderer.invoke(IPC.EngineDevelopConcepts, input),
     compile: (input) => ipcRenderer.invoke(IPC.EngineCompile, input),
   },
+  render: {
+    start: (input) => ipcRenderer.invoke(IPC.RenderStart, input),
+    cancel: (input) => ipcRenderer.invoke(IPC.RenderCancel, input),
+    status: (input) => ipcRenderer.invoke(IPC.RenderStatus, input),
+    listHistory: (input) => ipcRenderer.invoke(IPC.RenderListHistory, input),
+    retry: (input) => ipcRenderer.invoke(IPC.RenderRetry, input),
+    openFile: (input) => ipcRenderer.invoke(IPC.RenderOpenFile, input),
+    openFolder: (input) => ipcRenderer.invoke(IPC.RenderOpenFolder, input),
+  },
   on: (channel, listener) => {
     const allowed = new Set<string>([IPC.RenderProgress, IPC.PhoneSessionStatus])
     if (!allowed.has(channel)) {

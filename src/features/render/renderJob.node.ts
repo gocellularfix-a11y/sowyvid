@@ -19,13 +19,8 @@ import {
  * spawns its own headless browser, so encoding never blocks the UI.
  */
 
-export type RenderPhase = 'bundling' | 'preparing' | 'rendering' | 'finalizing'
-
-export interface RenderProgress {
-  phase: RenderPhase
-  /** 0..1 overall. */
-  progress: number
-}
+export type { RenderPhase, RenderProgress } from './renderProgress'
+import type { RenderPhase, RenderProgress } from './renderProgress'
 
 export interface RenderJobInput {
   projectId: string

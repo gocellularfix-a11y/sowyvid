@@ -92,6 +92,39 @@ function createMockBridge(): SowyvidBridge {
         ),
       remove: () => Promise.resolve(err('UNSUPPORTED', 'No disponible en vista previa.')),
     },
+    render: {
+      // Exporting needs the desktop app (real render engine, real filesystem).
+      // The browser preview reports an honest not-ready status instead.
+      start: () =>
+        Promise.resolve(err('UNSUPPORTED', 'Descargar video solo está disponible en la app de escritorio.')),
+      cancel: () => Promise.resolve(ok(false)),
+      status: ({ projectId }) => {
+        const project = store.get(projectId)
+        return Promise.resolve(
+          ok({
+            active: null,
+            readiness: {
+              ready: false,
+              blockers: [
+                {
+                  code: (project ? 'render-active' : 'no-project') as 'render-active' | 'no-project',
+                  message: 'Descargar video solo está disponible en la app de escritorio.',
+                },
+              ],
+            },
+            presets: [],
+            defaultPreset: 'vertical' as const,
+          }),
+        )
+      },
+      listHistory: () => Promise.resolve(ok([])),
+      retry: () =>
+        Promise.resolve(err('UNSUPPORTED', 'Descargar video solo está disponible en la app de escritorio.')),
+      openFile: () =>
+        Promise.resolve(ok({ opened: false, fileExists: false, message: 'No disponible en vista previa.' })),
+      openFolder: () =>
+        Promise.resolve(ok({ opened: false, fileExists: false, message: 'No disponible en vista previa.' })),
+    },
     engine: {
       families: () => Promise.resolve(ok(listCreativeFamilies())),
       developConcepts: ({ projectId, count }) => {

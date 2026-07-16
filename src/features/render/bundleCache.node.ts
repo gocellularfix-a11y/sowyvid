@@ -1,7 +1,9 @@
-import { readFile, readdir, writeFile, mkdir, stat } from 'node:fs/promises'
+import { readFile, readdir, writeFile, mkdir, stat, cp } from 'node:fs/promises'
 import { existsSync } from 'node:fs'
 import { join, resolve, relative } from 'node:path'
-import { bundle } from '@remotion/bundler'
+// NOTE: `@remotion/bundler` is imported DYNAMICALLY inside ensureRenderBundle,
+// only on the development path. The packaged app never bundles (it copies the
+// prebuilt bundle), so webpack does not ship — see electron-builder.yml.
 import {
   computeBundleFingerprint,
   decideCache,
@@ -59,10 +61,32 @@ export interface BundleCacheOptions {
   projectRoot: string
   /** Where bundles are cached. MUST be isolated from project media. */
   cacheRoot: string
+  /**
+   * Packaged mode: a PREBUILT bundle shipped in resources (built at package
+   * time by scripts/prepare-render-bundle.mjs from the same sources with the
+   * same fingerprint function). When set, "building" means copying this bundle
+   * into the cache — no webpack at runtime. The fingerprint→compare→refresh→
+   * stamp flow is IDENTICAL to development, so a stale userData cache
+   * self-repairs the same way in both modes.
+   */
+  prebuilt?: { dir: string }
 }
 
-/** Fingerprint of the composition code currently on disk. */
+/** Fingerprint of the composition code the running app would render with. */
 export async function currentBundleFingerprint(options: BundleCacheOptions): Promise<string> {
+  if (options.prebuilt) {
+    // The shipped stamp IS the fingerprint of the sources this build was
+    // packaged from; the sources themselves are not shipped, so it cannot be
+    // recomputed here — and does not need to be: the shipped bundle is
+    // immutable for the lifetime of the installed version.
+    const raw = await readFile(join(options.prebuilt.dir, BUNDLE_STAMP_FILE), 'utf8')
+    const stamp = JSON.parse(raw) as Partial<BundleStamp>
+    if (typeof stamp.fingerprint !== 'string' || stamp.fingerprint.length === 0) {
+      throw new Error(`prebuilt render bundle has no valid stamp: ${options.prebuilt.dir}`)
+    }
+    return stamp.fingerprint
+  }
+
   const files: FingerprintFile[] = []
   for (const rel of FINGERPRINT_ROOTS) {
     const dir = resolve(options.projectRoot, rel)
@@ -130,21 +154,38 @@ export async function ensureRenderBundle(
   // never outside the cache root.
   await safeRemoveDir(bundleDir, options.cacheRoot)
 
-  const serveUrl = await bundle({
-    entryPoint: resolve(options.projectRoot, 'src/render/remotionEntry.ts'),
-    outDir: bundleDir,
-    onProgress: (p) => hooks.onProgress?.(p),
-    // Remotion's webpack knows nothing about our path aliases. Without this the
-    // bundle cannot resolve the vendored engines, and export fails while every
-    // other bundler is perfectly happy — so the map is shared, not re-typed.
-    webpackOverride: (config) => ({
-      ...config,
-      resolve: {
-        ...config.resolve,
-        alias: { ...config.resolve?.alias, ...allAliases(options.projectRoot) },
-      },
-    }),
-  })
+  let serveUrl: string
+  if (options.prebuilt) {
+    // Packaged: "building" is copying the shipped, immutable bundle into the
+    // cache. The stamp is still written only after a successful copy, below —
+    // an interrupted copy is unstamped and rebuilds next time.
+    hooks.onProgress?.(0)
+    await cp(options.prebuilt.dir, bundleDir, {
+      recursive: true,
+      // A link inside resources would be a build-machine artifact; never follow.
+      verbatimSymlinks: true,
+      filter: (src) => !src.endsWith(BUNDLE_STAMP_FILE),
+    })
+    hooks.onProgress?.(100)
+    serveUrl = bundleDir
+  } else {
+    const { bundle } = await import('@remotion/bundler')
+    serveUrl = await bundle({
+      entryPoint: resolve(options.projectRoot, 'src/render/remotionEntry.ts'),
+      outDir: bundleDir,
+      onProgress: (p) => hooks.onProgress?.(p),
+      // Remotion's webpack knows nothing about our path aliases. Without this the
+      // bundle cannot resolve the vendored engines, and export fails while every
+      // other bundler is perfectly happy — so the map is shared, not re-typed.
+      webpackOverride: (config) => ({
+        ...config,
+        resolve: {
+          ...config.resolve,
+          alias: { ...config.resolve?.alias, ...allAliases(options.projectRoot) },
+        },
+      }),
+    })
+  }
 
   // Stamp only AFTER a successful build, so a crashed build can never be
   // mistaken for a valid cache: an unstamped directory is always rebuilt.

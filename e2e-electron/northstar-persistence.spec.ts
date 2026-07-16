@@ -89,8 +89,11 @@ test('Northstar selection persists across a real Electron restart', async () => 
   })
   const db = new SQL.Database(new Uint8Array(readFileSync(dbPath)))
   try {
+    // Step 10 — the creative-selection migration (v2) is applied. Later
+    // migrations may exist on top of it; asserting an exact number here made
+    // this test break every time an unrelated migration landed.
     const version = db.exec('SELECT MAX(version) AS v FROM schema_migrations')
-    expect(Number(version[0]?.values[0]?.[0])).toBe(2) // Step 10
+    expect(Number(version[0]?.values[0]?.[0])).toBeGreaterThanOrEqual(2)
 
     const columns = (db.exec('PRAGMA table_info(projects)')[0]?.values ?? []).map((row) => row[1])
     expect(columns).toContain('concept_id') // Step 11

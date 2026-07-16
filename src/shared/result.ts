@@ -30,6 +30,10 @@ export type AppErrorCode =
   | 'PHONE_IMPORT'
   | 'AI'
   | 'UNSUPPORTED'
+  /** The export gate is closed; `message` carries the owner-facing Spanish blocker. */
+  | 'NOT_READY'
+  /** A render is already active for this project. */
+  | 'BUSY'
   | 'INTERNAL'
 
 export function ok<T>(value: T): Ok<T> {

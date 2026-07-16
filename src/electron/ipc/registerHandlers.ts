@@ -31,6 +31,7 @@ import { getAppPaths, projectDir } from '../paths'
 import { mkdirSync } from 'node:fs'
 import { join } from 'node:path'
 import { handle } from './registry'
+import { registerRenderHandlers } from './renderHandlers'
 
 export interface HandlerContext {
   db: PersistentDatabase
@@ -204,4 +205,7 @@ export function registerHandlers(ctx: HandlerContext): void {
       return ok(result)
     },
   )
+
+  // ---- Rendering (owner MP4 export) ----
+  registerRenderHandlers(ctx)
 }

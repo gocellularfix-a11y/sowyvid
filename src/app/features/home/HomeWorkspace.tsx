@@ -8,6 +8,7 @@ import { useToast } from '../../ui/toastContext'
 import { getBridge, isBrowserPreview } from '../../bridge'
 import { tileImageUrl } from '../../mediaUrl'
 import { PreviewPlayer } from './PreviewPlayer'
+import { ExportPanel } from './ExportPanel'
 import type { MediaAsset } from '@shared/domain/media'
 import type { VisualPlan } from '@features/visual/visualPlan'
 import type { AudioPlan } from '@features/audio/audioPlan'
@@ -347,9 +348,7 @@ export function HomeWorkspace(): JSX.Element {
                 </p>
               )}
               <div className={styles.resultActions}>
-                <Button block leftIcon="download" onClick={soon}>
-                  {copy.step4.download}
-                </Button>
+                {projectId ? <ExportPanel projectId={projectId} /> : null}
                 <Button variant="secondary" block leftIcon="refresh" onClick={generate}>
                   {copy.step4.createAnother}
                 </Button>

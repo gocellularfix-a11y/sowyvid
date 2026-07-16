@@ -58,7 +58,7 @@ export async function openPersistentDatabase(dbFilePath: string): Promise<Persis
 }
 
 export { ProjectRepository } from './projectRepository'
-export type { ExportRecord } from './projectRepository'
+export type { ExportRecord } from '@shared/domain/exportRecord'
 export type { Database, PersistentDatabase } from './port'
 export { runMigrations, currentSchemaVersion, MIGRATIONS } from './migrations'
 export { createSqlJsDatabase } from './sqljs'

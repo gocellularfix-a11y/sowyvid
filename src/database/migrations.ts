@@ -60,6 +60,30 @@ export const MIGRATIONS: Migration[] = [
       CREATE INDEX idx_projects_concept ON projects(concept_id);
     `,
   },
+  {
+    version: 3,
+    name: 'export-history-render-jobs',
+    // Owner-facing MP4 export. Non-destructive: the v1 export_history columns
+    // stay; new columns describe the full render-job lifecycle. Legacy rows (if
+    // any existed) read as completed exports with unknown codecs.
+    //
+    // `output_path` is the owner-chosen absolute destination — the one place an
+    // absolute path is allowed to persist. `status` rows left at 'rendering' on
+    // startup mean the app died mid-render; the repository marks them
+    // 'failed'/'interrupted' so history never shows a phantom in-progress job.
+    up: `
+      ALTER TABLE export_history ADD COLUMN completed_at TEXT;
+      ALTER TABLE export_history ADD COLUMN status TEXT NOT NULL DEFAULT 'completed';
+      ALTER TABLE export_history ADD COLUMN preset TEXT NOT NULL DEFAULT '';
+      ALTER TABLE export_history ADD COLUMN fps REAL NOT NULL DEFAULT 0;
+      ALTER TABLE export_history ADD COLUMN output_path TEXT NOT NULL DEFAULT '';
+      ALTER TABLE export_history ADD COLUMN video_codec TEXT;
+      ALTER TABLE export_history ADD COLUMN audio_codec TEXT;
+      ALTER TABLE export_history ADD COLUMN fingerprint TEXT;
+      ALTER TABLE export_history ADD COLUMN failure_code TEXT;
+      CREATE INDEX idx_exports_status ON export_history(status);
+    `,
+  },
 ]
 
 /**

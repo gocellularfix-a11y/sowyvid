@@ -342,6 +342,139 @@
 .audioToggle input:disabled + span {
   opacity: 0.4;
 }
+.exportPanel {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  width: 100%;
+  flex-shrink: 0;
+}
+.exportPresets {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  font-size: 12px;
+  color: var(--text-dim, #b9b9c6);
+}
+.exportPreset {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  cursor: pointer;
+}
+.exportPreset[data-disabled='true'] {
+  opacity: 0.4;
+  cursor: default;
+}
+.exportBlocker {
+  margin: 0;
+  font-size: 12px;
+  line-height: 1.4;
+  color: #ffd79a;
+}
+.exportNotice {
+  margin: 0;
+  font-size: 12px;
+  line-height: 1.4;
+  color: var(--text-dim, #b9b9c6);
+}
+.exportProgress {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.exportProgressBar {
+  height: 8px;
+  border-radius: 4px;
+  background: rgba(255, 255, 255, 0.08);
+  overflow: hidden;
+}
+.exportProgressFill {
+  height: 100%;
+  border-radius: 4px;
+  background: var(--brand, #7c5cff);
+  transition: width 200ms ease;
+}
+.exportProgressRow {
+  display: flex;
+  justify-content: space-between;
+  font-size: 12px;
+  color: var(--text-dim, #b9b9c6);
+}
+.exportDone,
+.exportFailed {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding: 12px;
+  border-radius: var(--radius-md, 8px);
+  border: 1px solid rgba(120, 220, 150, 0.3);
+  background: rgba(120, 220, 150, 0.08);
+  font-size: 13px;
+}
+.exportFailed {
+  border-color: rgba(255, 140, 120, 0.35);
+  background: rgba(255, 140, 120, 0.08);
+}
+.exportFailed p {
+  margin: 0;
+}
+.exportDoneTitle {
+  margin: 0;
+  font-weight: 700;
+  color: #9be6b4;
+}
+.exportDoneDetail {
+  margin: 0;
+  font-size: 12px;
+  color: var(--text-dim, #b9b9c6);
+  word-break: break-all;
+}
+.exportDoneActions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 4px;
+}
+.exportCode {
+  font-size: 11px;
+  opacity: 0.7;
+}
+.exportHistory {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  font-size: 12px;
+  color: var(--text-dim, #b9b9c6);
+}
+.exportHistoryTitle {
+  margin: 6px 0 2px;
+  font-weight: 600;
+}
+.exportHistoryRow {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 8px;
+}
+.exportHistoryName {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.exportHistoryActions {
+  display: flex;
+  gap: 6px;
+  flex-shrink: 0;
+}
+.exportHistoryActions button {
+  background: none;
+  border: none;
+  color: var(--brand, #7c5cff);
+  cursor: pointer;
+  font-size: 12px;
+  padding: 2px 4px;
+}
 .previewEmpty {
   display: flex;
   flex-direction: column;
