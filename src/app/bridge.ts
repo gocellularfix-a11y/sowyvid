@@ -110,6 +110,23 @@ function createMockBridge(): SowyvidBridge {
       replace: () => Promise.resolve(err('UNSUPPORTED', 'No disponible en vista previa.')),
       removeReferenced: () => Promise.resolve(err('UNSUPPORTED', 'No disponible en vista previa.')),
     },
+    music: {
+      // The Music Center needs managed storage + ffprobe: desktop only. The
+      // browser preview reports honest emptiness rather than faking a library.
+      list: () => Promise.resolve(ok([])),
+      get: () => Promise.resolve(ok(null)),
+      import: () =>
+        Promise.resolve(err('UNSUPPORTED', 'La música está disponible en la app de escritorio.')),
+      updateMeta: () => Promise.resolve(err('UNSUPPORTED', 'No disponible en vista previa.')),
+      select: () => Promise.resolve(err('UNSUPPORTED', 'No disponible en vista previa.')),
+      delete: () => Promise.resolve(ok({ deleted: false, blocked: false, usages: [] })),
+      removeFromAll: () => Promise.resolve(ok({ deleted: false, blocked: false, usages: [] })),
+      replaceEverywhere: () => Promise.resolve(ok({ updated: 0 })),
+      reveal: () => Promise.resolve(ok({ opened: false })),
+      brief: () => Promise.resolve(err('UNSUPPORTED', 'No disponible en vista previa.')),
+      openSuno: () => Promise.resolve(ok({ opened: false })),
+      importSuno: () => Promise.resolve(err('UNSUPPORTED', 'No disponible en vista previa.')),
+    },
     render: {
       // Exporting needs the desktop app (real render engine, real filesystem).
       // The browser preview reports an honest not-ready status instead.

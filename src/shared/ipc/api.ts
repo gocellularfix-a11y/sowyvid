@@ -1,5 +1,12 @@
 import type { Result } from '../result'
 import type { Project, CreateProjectInput, CreativeSelection } from '../domain/project'
+import type {
+  MusicTrack,
+  MusicTrackWithState,
+  MusicMetaPatch,
+  MusicUsage,
+} from '../domain/music'
+import type { MusicBriefDetail } from '@features/audio'
 import type { CreativePlan, CommercialRenderPlan } from '@jorge-engines/northstar-creative'
 import type { CreativeFamilyInfo } from '@features/creative/families'
 import type { SowyvidRendererPlan } from '@features/creative/creativePlanToRenderer'
@@ -53,6 +60,29 @@ export interface RenderStatusResult {
   /** Preset catalog with per-plan renderability, plus the default selection. */
   presets: Array<ExportPresetInfo & { renderable: boolean }>
   defaultPreset: ExportPresetId
+}
+
+/** Per-file outcome of a Music Center import batch. */
+export interface MusicImportOutcome {
+  status: 'imported' | 'duplicate' | 'unsupported' | 'oversized' | 'empty' | 'no-audio' | 'failed'
+  originalName: string
+  trackId?: string
+  detail?: string
+}
+
+/** Result of importing music into the global library. */
+export interface MusicImportResult {
+  canceled: boolean
+  outcomes: MusicImportOutcome[]
+  /** Tracks that ended up in the catalog (new or matched by hash). */
+  tracks: MusicTrack[]
+}
+
+/** Result of deleting a catalog track — blocked (with usages) when still in use. */
+export interface MusicDeleteResult {
+  deleted: boolean
+  blocked: boolean
+  usages: MusicUsage[]
 }
 
 /** Outcome of deleting a whole commercial. */
@@ -123,6 +153,39 @@ export interface SowyvidBridge {
       projectId: string
       mediaId: string
     }): Promise<Result<MediaRemoveResult>>
+  }
+  /** The global Music Center — an application-level catalog, not per project. */
+  music: {
+    /** Every catalog track with live file state and usage counts. */
+    list(): Promise<Result<MusicTrackWithState[]>>
+    get(input: { id: string }): Promise<Result<MusicTrackWithState | null>>
+    /** Import MP3/WAV into the global vault (dialog, or `paths` for tests). */
+    import(input?: { paths?: string[] }): Promise<Result<MusicImportResult>>
+    /** Progressive metadata — none required before listening to or using a track. */
+    updateMeta(input: { id: string; patch: MusicMetaPatch }): Promise<Result<MusicTrack>>
+    /** Select (or clear, with null) the current commercial's background music. */
+    select(input: { projectId: string; trackId: string | null }): Promise<Result<Project>>
+    /** Delete an UNUSED track; when used, returns blocked with the usage list. */
+    delete(input: { id: string }): Promise<Result<MusicDeleteResult>>
+    /**
+     * Owner-confirmed multi-project op (main-owned): clear this track from every
+     * commercial using it; when `deleteTrack`, also remove the managed file once
+     * no usage remains. Exported MP4s are never touched.
+     */
+    removeFromAll(input: { trackId: string; deleteTrack: boolean }): Promise<Result<MusicDeleteResult>>
+    /** Owner-confirmed multi-project op: point every user of `trackId` at `newTrackId`. */
+    replaceEverywhere(input: { trackId: string; newTrackId: string }): Promise<Result<{ updated: number }>>
+    /** Reveal the managed file in the OS file manager (when it exists). */
+    reveal(input: { id: string }): Promise<Result<{ opened: boolean }>>
+    /** Deterministic Suno brief for the given commercial. */
+    brief(input: { projectId: string; wantsVocals?: boolean }): Promise<Result<MusicBriefDetail>>
+    /** Open the official Suno site in the system browser. */
+    openSuno(): Promise<Result<{ opened: boolean }>>
+    /** Import a downloaded Suno track, tagging source + storing the brief used. */
+    importSuno(input: {
+      brief: string
+      paths?: string[]
+    }): Promise<Result<MusicImportResult>>
   }
   render: {
     /**

@@ -26,17 +26,20 @@ import {
 import { visualPlanForProject } from '@features/visual'
 import { audioPlanForProject } from '@features/audio'
 import type { PersistentDatabase } from '@database/index'
-import { ProjectRepository } from '@database/index'
+import { ProjectRepository, MusicRepository } from '@database/index'
 import { branding } from '@config/branding'
 import { getAppPaths, projectDir } from '../paths'
 import { mkdirSync } from 'node:fs'
 import { join } from 'node:path'
 import { handle } from './registry'
 import { registerRenderHandlers } from './renderHandlers'
+import { registerMusicHandlers } from './registerMusicHandlers'
+import { resolveMusicTrackFrom } from './musicResolvers'
 
 export interface HandlerContext {
   db: PersistentDatabase
   repo: ProjectRepository
+  musicRepo: MusicRepository
 }
 
 function openMediaDialogOptions(): Electron.OpenDialogOptions {
@@ -384,8 +387,9 @@ export function registerHandlers(ctx: HandlerContext): void {
       const rendererPlan = toRendererPlan(renderPlan, projectAssetResolver(project))
       const visualPlan = visualPlanForProject(project, renderPlan)
       // Sound shares the picture's timeline, so the AudioPlan is built FROM the
-      // VisualPlan rather than from the render plan independently.
-      const audioPlan = audioPlanForProject(project, visualPlan)
+      // VisualPlan rather than from the render plan independently. The global
+      // Music Center track (if one is selected) is resolved through the catalog.
+      const audioPlan = audioPlanForProject(project, visualPlan, resolveMusicTrackFrom(ctx.musicRepo))
 
       // Persist the reproducible selection so the concept survives restart.
       repo.save({
@@ -399,6 +403,9 @@ export function registerHandlers(ctx: HandlerContext): void {
       return ok(result)
     },
   )
+
+  // ---- Music Center (global catalog + manual Suno workflow) ----
+  registerMusicHandlers(ctx)
 
   // ---- Rendering (owner MP4 export) ----
   registerRenderHandlers(ctx)

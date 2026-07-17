@@ -5,6 +5,7 @@ import { randomBytes } from 'node:crypto'
 import { AddressInfo } from 'node:net'
 import type { MediaVariant } from '@features/media/managedPath'
 import { isValidMediaId } from '@features/media/managedPath'
+import { isValidMusicTrackId } from '@shared/domain/music'
 import { parseByteRange, contentRangeHeader, rangeLength } from '@features/media/httpRange'
 
 /**
@@ -41,6 +42,9 @@ export type ManagedMediaResolver = (
   variant: MediaVariant,
 ) => string | null
 
+/** Resolve a global Music Center track id to an absolute vault path, or null. */
+export type ManagedMusicResolver = (trackId: string) => string | null
+
 export interface MediaServerHandle {
   /** e.g. http://127.0.0.1:51234/a1b2c3… — the prefix that replaces `sowyvid-media://`. */
   baseUrl: string
@@ -70,6 +74,7 @@ function contentTypeFor(path: string): string {
 
 export async function startRenderMediaServer(
   resolveAsset: ManagedMediaResolver,
+  resolveMusic?: ManagedMusicResolver,
 ): Promise<MediaServerHandle> {
   const token = randomBytes(16).toString('hex')
 
@@ -79,20 +84,27 @@ export async function startRenderMediaServer(
         const url = new URL(req.url ?? '/', 'http://127.0.0.1')
         const parts = url.pathname.split('/').filter(Boolean)
 
-        // /<token>/asset/<projectId>/<mediaId>/<variant>
-        if (parts[0] !== token || parts[1] !== 'asset') {
-          res.writeHead(404).end('Not found')
-          return
+        if (parts[0] !== token) return void res.writeHead(404).end('Not found')
+
+        let abs: string | null = null
+        if (parts[1] === 'asset') {
+          // /<token>/asset/<projectId>/<mediaId>/<variant>
+          const projectId = parts[2]
+          const mediaId = parts[3]
+          const variant = (parts[4] ?? 'original') as MediaVariant
+          if (!projectId || !PROJECT_ID.test(projectId)) return void res.writeHead(404).end('Not found')
+          if (!mediaId || !isValidMediaId(mediaId)) return void res.writeHead(404).end('Not found')
+          if (!VARIANTS.includes(variant)) return void res.writeHead(404).end('Not found')
+          abs = resolveAsset(projectId, mediaId, variant)
+        } else if (parts[1] === 'music') {
+          // /<token>/music/<trackId>/original — a global Music Center track.
+          const trackId = parts[2]
+          if (!trackId || !isValidMusicTrackId(trackId)) return void res.writeHead(404).end('Not found')
+          abs = resolveMusic?.(trackId) ?? null
+        } else {
+          return void res.writeHead(404).end('Not found')
         }
-        const projectId = parts[2]
-        const mediaId = parts[3]
-        const variant = (parts[4] ?? 'original') as MediaVariant
 
-        if (!projectId || !PROJECT_ID.test(projectId)) return void res.writeHead(404).end('Not found')
-        if (!mediaId || !isValidMediaId(mediaId)) return void res.writeHead(404).end('Not found')
-        if (!VARIANTS.includes(variant)) return void res.writeHead(404).end('Not found')
-
-        const abs = resolveAsset(projectId, mediaId, variant)
         if (!abs) return void res.writeHead(404).end('Not found')
 
         const info = await stat(abs).catch(() => null)

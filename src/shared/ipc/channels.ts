@@ -36,6 +36,20 @@ export const IPC = {
   /** Owner-confirmed removal of a REFERENCED asset (main owns the cascade). */
   MediaRemoveReferenced: 'media:removeReferenced',
 
+  // Music Center (global catalog + manual Suno workflow)
+  MusicList: 'music:list',
+  MusicImport: 'music:import',
+  MusicGet: 'music:get',
+  MusicUpdateMeta: 'music:updateMeta',
+  MusicSelect: 'music:select',
+  MusicDelete: 'music:delete',
+  MusicRemoveFromAll: 'music:removeFromAll',
+  MusicReplaceEverywhere: 'music:replaceEverywhere',
+  MusicReveal: 'music:reveal',
+  MusicBrief: 'music:brief',
+  MusicOpenSuno: 'music:openSuno',
+  MusicImportSuno: 'music:importSuno',
+
   // Rendering (owner MP4 export)
   RenderStart: 'render:start',
   RenderCancel: 'render:cancel',

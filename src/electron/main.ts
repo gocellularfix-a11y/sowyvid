@@ -2,8 +2,9 @@ import { app, BrowserWindow, shell, dialog, protocol } from 'electron'
 import { join } from 'node:path'
 import { registerHandlers } from './ipc/registerHandlers'
 import { getAppPaths } from './paths'
-import { openPersistentDatabase, ProjectRepository } from '@database/index'
+import { openPersistentDatabase, ProjectRepository, MusicRepository } from '@database/index'
 import { MEDIA_SCHEME, registerMediaProtocol } from './mediaProtocol'
+import { migrateLegacyProjectMusic } from './ipc/migrateLegacyMusic.node'
 import { branding } from '@config/branding'
 
 // The controlled media scheme must be declared privileged BEFORE app is ready.
@@ -88,8 +89,12 @@ app.whenReady().then(async () => {
   try {
     const db = await openPersistentDatabase(join(paths.database, 'sowyvid.db'))
     const repo = new ProjectRepository(db)
-    registerMediaProtocol(repo)
-    registerHandlers({ db, repo })
+    const musicRepo = new MusicRepository(db)
+    registerMediaProtocol(repo, musicRepo)
+    registerHandlers({ db, repo, musicRepo })
+    // One-time, idempotent: bring any pre-Music-Center project music into the
+    // global catalog before the window loads, preserving existing selections.
+    await migrateLegacyProjectMusic({ db, repo, musicRepo })
   } catch (e) {
     // A database that cannot open is fatal, but the owner should get a calm
     // message — not a stack trace — and their data is untouched.

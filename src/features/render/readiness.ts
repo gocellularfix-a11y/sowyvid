@@ -119,7 +119,11 @@ export function evaluateRenderReadiness(input: ReadinessInput): RenderReadiness 
     const byId = new Map(project.media.map((m) => [m.id, m]))
     const gone = audioIds.filter((id) => {
       const asset = byId.get(id)
-      return !asset || !input.fileExists(asset.relPath)
+      // A GLOBAL Music Center track (music_<hash>) lives outside project.media;
+      // the AudioPlan builder already validated its managed file and would have
+      // recorded a missing track above. Only PROJECT-scoped audio is checked here.
+      if (!asset) return false
+      return !input.fileExists(asset.relPath)
     })
     if (gone.length > 0 && !blockers.some((b) => b.code === 'missing-audio')) {
       blockers.push({

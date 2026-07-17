@@ -9,6 +9,7 @@ import {
   startRenderMediaServer,
   rewriteManagedUrls,
   type ManagedMediaResolver,
+  type ManagedMusicResolver,
 } from './mediaServer.node'
 
 /**
@@ -45,6 +46,8 @@ export interface RenderJobInput {
    * Electron `sowyvid-media://` scheme — see mediaServer.node.ts.
    */
   resolveAsset: ManagedMediaResolver
+  /** Resolves a selected global Music Center track for the loopback server. */
+  resolveMusic?: ManagedMusicResolver
 }
 
 export interface RenderJobResult {
@@ -124,7 +127,7 @@ export async function runRenderJob(
     // no `sowyvid-media://` scheme. Serve it over a token-guarded loopback
     // server addressed by the SAME stable ids, and rewrite the props to match —
     // no filesystem path ever enters the composition.
-    mediaServer = await startRenderMediaServer(input.resolveAsset)
+    mediaServer = await startRenderMediaServer(input.resolveAsset, input.resolveMusic)
     const props: CommercialCompositionProps = rewriteManagedUrls(
       { ...input.props, ...scale },
       mediaServer.baseUrl,

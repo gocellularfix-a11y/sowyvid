@@ -32,6 +32,7 @@ import {
 import { defaultExportFileName, numberedIfTaken } from '@features/render/fileNaming'
 import { resolveManagedMediaPath, type MediaVariant } from '@features/media/managedPath'
 import { unpackedBinaryPath } from '@features/media/unpackedPath'
+import { resolveMusicTrackFrom, resolveMusicPathFrom } from './musicResolvers'
 import type { VisualPlan } from '@features/visual/visualPlan'
 import type { AudioPlan } from '@features/audio/audioPlan'
 import { getRenderEnvironment } from '../renderEnvironment'
@@ -93,7 +94,7 @@ async function devFfmpeg(): Promise<string | null> {
 }
 
 /** Rebuild everything a render needs from the persisted project. Deterministic. */
-function buildArtifacts(project: Project): {
+function buildArtifacts(ctx: HandlerContext, project: Project): {
   visualPlan: VisualPlan
   audioPlan: AudioPlan
   props: CommercialCompositionProps
@@ -101,7 +102,7 @@ function buildArtifacts(project: Project): {
   if (!project.creative) throw new Error('project has no compiled concept')
   const { renderPlan } = compileProjectConcept(project, project.creative.conceptId)
   const visualPlan = visualPlanForProject(project, renderPlan)
-  const audioPlan = audioPlanForProject(project, visualPlan)
+  const audioPlan = audioPlanForProject(project, visualPlan, resolveMusicTrackFrom(ctx.musicRepo))
   const props = visualPlanToCompositionProps(visualPlan, project.id, project.media, {
     audio: audioPlanToCompositionAudio(audioPlan),
   })
@@ -115,7 +116,7 @@ function readinessFor(ctx: HandlerContext, projectId: string): RenderStatusResul
   let aspect = '9:16'
   if (project?.creative) {
     try {
-      const artifacts = buildArtifacts(project)
+      const artifacts = buildArtifacts(ctx, project)
       visualPlan = artifacts.visualPlan
       audioPlan = artifacts.audioPlan
       aspect = artifacts.visualPlan.aspectRatio
@@ -182,7 +183,7 @@ function startJob(
   presetId: ExportPresetId,
   outputPath: string,
 ): RenderJobSnapshot {
-  const { props } = buildArtifacts(project)
+  const { props } = buildArtifacts(ctx, project)
   const env = getRenderEnvironment()
   const preset = toRenderPreset(presetId)
 
@@ -193,6 +194,9 @@ function startJob(
     if (!asset) return null
     return resolveManagedMediaPath(projectDir(projectId), asset, variant)
   }
+  // A selected global Music Center track is served to the render's headless
+  // Chrome the same way, addressed by stable track id through the vault guard.
+  const resolveMusic = resolveMusicPathFrom(ctx.musicRepo)
 
   return registry.start(project.id, {
     beginHistory: () => {
@@ -241,6 +245,7 @@ function startJob(
           browserExecutable: env.browserExecutable,
           binariesDirectory: env.binariesDirectory,
           resolveAsset,
+          resolveMusic,
         },
         { signal, onProgress },
       )
