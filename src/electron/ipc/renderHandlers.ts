@@ -105,6 +105,7 @@ function buildArtifacts(ctx: HandlerContext, project: Project): {
   const audioPlan = audioPlanForProject(project, visualPlan, resolveMusicTrackFrom(ctx.musicRepo))
   const props = visualPlanToCompositionProps(visualPlan, project.id, project.media, {
     audio: audioPlanToCompositionAudio(audioPlan),
+    textLayouts: project.textLayouts,
   })
   return { visualPlan, audioPlan, props }
 }

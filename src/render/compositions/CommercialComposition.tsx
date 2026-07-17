@@ -169,10 +169,6 @@ function SceneView({
   const objectPosition =
     scene.focal === 'top' ? 'center top' : scene.focal === 'bottom' ? 'center bottom' : 'center'
 
-  const tf = scene.textFrame
-  const headlineSize = Math.round(width * (scene.emphasis === 'cta' ? 0.07 : 0.06))
-  const bodySize = Math.round(width * 0.032)
-
   return (
     <AbsoluteFill style={{ opacity, background: sceneBackground(scene, []) }}>
       {primary ? (
@@ -191,45 +187,67 @@ function SceneView({
         <MissingMediaPlaceholder colors={colors} />
       ) : null}
 
-      <AbsoluteFill
-        style={{
-          display: 'flex',
-          flexDirection: 'column',
-          justifyContent: tf.justifyContent,
-          alignItems: tf.alignItems,
-          textAlign: tf.textAlign,
-          paddingTop: tf.paddingTop,
-          paddingRight: tf.paddingRight,
-          paddingBottom: tf.paddingBottom,
-          paddingLeft: tf.paddingLeft,
-        }}
-      >
-        <div style={{ maxWidth: tf.maxWidth, transform: `translateY(${tf.translateYPercent}%)` }}>
-          {scene.copy.kicker ? (
-            <div style={{ color: '#c9b8ff', fontSize: Math.round(width * 0.03), fontWeight: 600, marginBottom: 8 }}>
-              {scene.copy.kicker}
-            </div>
-          ) : null}
-          <div
-            style={{
-              color: '#fff',
-              fontSize: headlineSize,
-              fontWeight: 800,
-              lineHeight: 1.05,
-              textShadow: '0 2px 24px rgba(0,0,0,0.5)',
-            }}
-          >
-            {scene.copy.headline}
-          </div>
-          {scene.copy.body ? (
-            <div style={{ color: '#eee', fontSize: bodySize, marginTop: 12, lineHeight: 1.3 }}>
-              {scene.copy.body}
-            </div>
-          ) : null}
+      {/* Text is positioned by the CANONICAL layout (normalized center + width +
+          scale + alignment). The same values back the editor overlay, so what the
+          owner places is exactly what the export renders. */}
+      {scene.textElements.map((el) => (
+        <div key={el.role} style={textElementStyle(el, width, scene.emphasis === 'cta')}>
+          {el.text}
         </div>
-      </AbsoluteFill>
+      ))}
     </AbsoluteFill>
   )
+}
+
+/** Base font size (px) for a role, before per-element scale. */
+const ROLE_FONT_FACTOR: Record<TextElementRole, number> = {
+  subtitle: 0.03,
+  headline: 0.06,
+  offer: 0.032,
+  cta: 0.06,
+  'business-name': 0.05,
+}
+
+interface TextElementRoleStyle {
+  color: string
+  fontWeight: number
+  lineHeight: number
+  textShadow?: string
+}
+const ROLE_STYLE: Record<TextElementRole, TextElementRoleStyle> = {
+  subtitle: { color: '#c9b8ff', fontWeight: 600, lineHeight: 1.15 },
+  headline: { color: '#fff', fontWeight: 800, lineHeight: 1.05, textShadow: '0 2px 24px rgba(0,0,0,0.5)' },
+  offer: { color: '#eee', fontWeight: 500, lineHeight: 1.3 },
+  cta: { color: '#fff', fontWeight: 800, lineHeight: 1.05, textShadow: '0 2px 24px rgba(0,0,0,0.5)' },
+  'business-name': { color: '#fff', fontWeight: 700, lineHeight: 1.1 },
+}
+
+type TextElementRole = CommercialCompositionProps['scenes'][number]['textElements'][number]['role']
+
+function textElementStyle(
+  el: CommercialCompositionProps['scenes'][number]['textElements'][number],
+  width: number,
+  ctaEmphasis: boolean,
+): CSSProperties {
+  const role = el.role
+  const base = ROLE_FONT_FACTOR[role] * (role === 'headline' && ctaEmphasis ? 1.15 : 1)
+  const style = ROLE_STYLE[role]
+  return {
+    position: 'absolute',
+    left: `${el.x * 100}%`,
+    top: `${el.y * 100}%`,
+    width: `${el.width * 100}%`,
+    transform: 'translate(-50%, -50%)',
+    textAlign: el.alignment,
+    fontSize: Math.round(width * base * el.scale),
+    color: style.color,
+    fontWeight: style.fontWeight,
+    lineHeight: style.lineHeight,
+    ...(style.textShadow ? { textShadow: style.textShadow } : {}),
+    // Wrapping is part of the canonical layout — same box width in both surfaces.
+    overflowWrap: 'break-word',
+    whiteSpace: 'pre-wrap',
+  }
 }
 
 /**

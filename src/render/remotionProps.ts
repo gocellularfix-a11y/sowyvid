@@ -1,5 +1,7 @@
-import type { VisualPlan } from '@features/visual/visualPlan'
+import type { VisualPlan, VisualScene } from '@features/visual/visualPlan'
 import type { MediaAsset } from '@shared/domain/media'
+import type { TextLayoutOverride, TextRole, TextAlignment } from '@shared/domain/textLayout'
+import { resolveSceneTextLayouts, type SceneTextInput } from '@features/visual/textLayout'
 import {
   computeVideoPlayback,
   SOURCE_AUDIO_OFF,
@@ -7,6 +9,57 @@ import {
   type VideoPlayback,
 } from './videoPlayback'
 import type { CompositionAudio } from './remotionAudio'
+
+/** A text element positioned by the CANONICAL layout — identical in preview and export. */
+export interface CompositionTextElement {
+  role: TextRole
+  text: string
+  /** Normalized center + size (0..1 of the canvas). Never pixels. */
+  x: number
+  y: number
+  width: number
+  scale: number
+  alignment: TextAlignment
+  custom: boolean
+}
+
+/** The scene copy → editable roles a scene actually renders. */
+export function sceneTextInput(scene: VisualScene, canvasWidth: number): SceneTextInput {
+  const texts: SceneTextInput['texts'] = {}
+  if (scene.copy.kicker) texts.subtitle = scene.copy.kicker
+  if (scene.copy.headline) texts.headline = scene.copy.headline
+  if (scene.copy.body) texts.offer = scene.copy.body
+  return {
+    sceneId: scene.id,
+    texts,
+    frame: {
+      justifyContent: scene.textFrame.justifyContent,
+      textAlign: scene.textFrame.textAlign,
+      maxWidth: scene.textFrame.maxWidth,
+      translateYPercent: scene.textFrame.translateYPercent,
+      canvasWidth,
+    },
+  }
+}
+
+/** Resolve a scene's text elements (auto + overrides) for the composition. */
+export function compositionTextElements(
+  scene: VisualScene,
+  overrides: readonly TextLayoutOverride[],
+  aspectRatio: string,
+  canvasWidth: number,
+): CompositionTextElement[] {
+  return resolveSceneTextLayouts(sceneTextInput(scene, canvasWidth), overrides, aspectRatio).map((el) => ({
+    role: el.role,
+    text: el.text,
+    x: el.layout.x,
+    y: el.layout.y,
+    width: el.layout.width,
+    scale: el.layout.scale,
+    alignment: el.layout.alignment,
+    custom: el.custom,
+  }))
+}
 
 // Canonical controlled media URL (mirrors src/app/mediaUrl.ts + mediaProtocol.ts).
 function mediaUrlById(projectId: string, mediaId: string, variant: 'original' | 'poster' | 'thumb'): string {
@@ -47,6 +100,8 @@ export interface CompositionScene {
   media: CompositionMedia[]
   copy: VisualPlan['scenes'][number]['copy']
   textFrame: VisualPlan['scenes'][number]['textFrame']
+  /** Canonical text placement — the SAME values drive preview and export. */
+  textElements: CompositionTextElement[]
   emphasis: string
 }
 
@@ -82,6 +137,8 @@ export interface CompositionPropsOptions {
    * `audio` is supplied (the plan wins). Omitted → OFF.
    */
   sourceAudio?: SourceAudioPolicy
+  /** Custom text placements; absent/empty → every element uses automatic layout. */
+  textLayouts?: readonly TextLayoutOverride[]
 }
 
 export function visualPlanToCompositionProps(
@@ -148,6 +205,7 @@ export function visualPlanToCompositionProps(
     })(),
     copy: scene.copy,
     textFrame: scene.textFrame,
+    textElements: compositionTextElements(scene, options.textLayouts ?? [], plan.aspectRatio, plan.width),
     emphasis: scene.emphasis,
   }))
 

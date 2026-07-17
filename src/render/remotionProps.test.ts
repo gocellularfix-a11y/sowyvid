@@ -86,6 +86,40 @@ describe('VisualPlan → composition props (Remotion adapter)', () => {
   })
 })
 
+describe('canonical text elements drive preview AND export identically', () => {
+  it('every scene exposes normalized text elements (auto by default)', () => {
+    const props = visualPlanToCompositionProps(visualPlan(), goCellularProject.id, goCellularProject.media)
+    for (const scene of props.scenes) {
+      expect(scene.textElements.length).toBeGreaterThan(0)
+      for (const el of scene.textElements) {
+        expect(el.x).toBeGreaterThanOrEqual(0)
+        expect(el.x).toBeLessThanOrEqual(1)
+        expect(el.custom).toBe(false)
+      }
+      // The headline is always present.
+      expect(scene.textElements.some((e) => e.role === 'headline')).toBe(true)
+    }
+  })
+
+  it('a custom override changes ONLY its element, and identically for the same inputs', () => {
+    const plan = visualPlan()
+    const sceneId = plan.scenes[0]!.id
+    const overrides = [
+      { sceneId, role: 'headline' as const, aspectRatio: plan.aspectRatio, x: 0.2, y: 0.15, width: 0.5, scale: 1.4, alignment: 'left' as const, locked: false },
+    ]
+    const a = visualPlanToCompositionProps(plan, goCellularProject.id, goCellularProject.media, { textLayouts: overrides })
+    const b = visualPlanToCompositionProps(plan, goCellularProject.id, goCellularProject.media, { textLayouts: overrides })
+    // Deterministic: preview and export get byte-identical text placement.
+    expect(a.scenes[0]!.textElements).toEqual(b.scenes[0]!.textElements)
+    const head = a.scenes[0]!.textElements.find((e) => e.role === 'headline')!
+    expect(head.custom).toBe(true)
+    expect(head.x).toBeCloseTo(0.2)
+    expect(head.scale).toBeCloseTo(1.4)
+    // A different scene stays automatic.
+    expect(a.scenes[1]!.textElements.every((e) => !e.custom)).toBe(true)
+  })
+})
+
 describe('live managed-video playback (composition props)', () => {
   it('the fixture actually exercises the video path', () => {
     expect(videoMedia().length).toBeGreaterThan(0)
