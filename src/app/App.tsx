@@ -3,6 +3,7 @@ import { AppHeader } from './shell/AppHeader'
 import { Sidebar, type NavKey } from './shell/Sidebar'
 import { HomeWorkspace } from './features/home/HomeWorkspace'
 import { MyCommercials } from './features/library/MyCommercials'
+import { MusicCenter } from './features/music/MusicCenter'
 import { Icon, type IconName } from './ui/Icon'
 import { useToast } from './ui/toastContext'
 import { getBridge, isBrowserPreview } from './bridge'
@@ -22,6 +23,7 @@ import styles from './App.module.css'
 export function App(): JSX.Element {
   const [nav, setNav] = useState<NavKey>('home')
   const [currentId, setCurrentId] = useState<string | null>(null)
+  const [currentName, setCurrentName] = useState<string | null>(null)
   const [restored, setRestored] = useState(isBrowserPreview)
   // Bumped to force a fresh HomeWorkspace when starting a new commercial.
   const [homeEpoch, setHomeEpoch] = useState(0)
@@ -38,6 +40,7 @@ export function App(): JSX.Element {
       if (cancelled) return
       if (projects.ok && projects.value.length > 0) {
         setCurrentId(projects.value[0]!.id)
+        setCurrentName(projects.value[0]!.name)
       }
       setRestored(true)
     })()
@@ -46,8 +49,9 @@ export function App(): JSX.Element {
     }
   }, [])
 
-  const openCommercial = (projectId: string): void => {
+  const openCommercial = (projectId: string, name: string): void => {
     setCurrentId(projectId)
+    setCurrentName(name)
     setHomeEpoch((n) => n + 1)
     setNav('home')
   }
@@ -57,6 +61,7 @@ export function App(): JSX.Element {
     // reuse its id — HomeWorkspace starts blank and only persists once the
     // owner writes something or imports material.
     setCurrentId(null)
+    setCurrentName(null)
     setHomeEpoch((n) => n + 1)
     setNav('home')
   }
@@ -81,7 +86,10 @@ export function App(): JSX.Element {
               <HomeWorkspace
                 key={`home-${homeEpoch}`}
                 initialProjectId={currentId}
-                onProjectChanged={(id) => setCurrentId(id)}
+                onProjectChanged={(id, name) => {
+                  setCurrentId(id)
+                  setCurrentName(name)
+                }}
                 onNewCommercial={newCommercial}
               />
             ) : (
@@ -90,6 +98,9 @@ export function App(): JSX.Element {
               </div>
             ))}
           {nav === 'myCommercials' && <MyCommercials onOpen={openCommercial} />}
+          {nav === 'music' && (
+            <MusicCenter currentProjectId={currentId} currentProjectName={currentName} />
+          )}
           {nav === 'material' && (
             <Placeholder
               icon="image"

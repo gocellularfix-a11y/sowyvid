@@ -363,6 +363,20 @@
   font-size: 12px;
   color: var(--text-dim, #b9b9c6);
 }
+.libraryMusic {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.libraryMusicName {
+  flex: 1;
+  font-size: 13px;
+  color: var(--text, #ececf2);
+  font-weight: 600;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
 .silentWarning {
   margin: 0;
   font-size: 12.5px;

@@ -54,7 +54,7 @@ function firstThumb(projectId: string, project: Project): string | null {
 export function MyCommercials({
   onOpen,
 }: {
-  onOpen: (projectId: string) => void
+  onOpen: (projectId: string, name: string) => void
 }): JSX.Element {
   const toast = useToast()
   const [rows, setRows] = useState<Row[]>([])
@@ -210,7 +210,7 @@ export function MyCommercials({
                 </p>
 
                 <div className={styles.cardActions}>
-                  <Button size="sm" onClick={() => onOpen(project.id)} data-testid="commercial-open">
+                  <Button size="sm" onClick={() => onOpen(project.id, project.name)} data-testid="commercial-open">
                     {copy.library.open}
                   </Button>
                   <Button

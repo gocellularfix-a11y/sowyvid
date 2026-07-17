@@ -76,6 +76,7 @@ export function HomeWorkspace({
   const [projectName, setProjectName] = useState<string | null>(null)
   const [media, setMedia] = useState<MediaAsset[]>([])
   const [audioCfg, setAudioCfg] = useState<AudioConfig | null>(null)
+  const [libraryMusicTitle, setLibraryMusicTitle] = useState<string | null>(null)
   const [importing, setImporting] = useState(false)
   const [removeDialog, setRemoveDialog] = useState<RemoveDialogState | null>(null)
 
@@ -154,10 +155,41 @@ export function HomeWorkspace({
     if (current.value.creative) await refreshPlans(projectId)
   }
 
-  /** The owner picks (or removes) the commercial's music. Persisted, then replanned. */
+  /** The owner picks (or removes) the commercial's LEGACY project-scoped music. */
   const onSelectMusic = async (nextId: string | null): Promise<void> => {
     await persistAudio({ musicId: nextId })
   }
+
+  /** Remove the selected GLOBAL Music Center track from this commercial. */
+  const onRemoveLibraryMusic = async (): Promise<void> => {
+    if (!projectId) return
+    const res = await getBridge().music.select({ projectId, trackId: null })
+    if (!res.ok) {
+      toast.show('No pudimos quitar la música.', 'error')
+      return
+    }
+    setAudioCfg(res.value.audio)
+    setLibraryMusicTitle(null)
+    if (res.value.creative) await refreshPlans(projectId)
+  }
+
+  // Resolve the selected library track's display title (owner-facing name).
+  useEffect(() => {
+    const id = audioCfg?.musicTrackId
+    if (!id) {
+      setLibraryMusicTitle(null)
+      return
+    }
+    let cancelled = false
+    void (async () => {
+      const res = await getBridge().music.get({ id })
+      if (cancelled) return
+      if (res.ok && res.value) setLibraryMusicTitle(res.value.title || res.value.originalName)
+    })()
+    return () => {
+      cancelled = true
+    }
+  }, [audioCfg?.musicTrackId])
 
   /** Sliders update optimistically and persist shortly after the last movement. */
   const onMusicVolume = (value: number): void => {
@@ -344,6 +376,10 @@ export function HomeWorkspace({
   const soundVideos = videosWithAudio(media)
   const hasVideos = media.some((m) => m.kind === 'video')
   const musicId = audioCfg?.musicId ?? null
+  const musicTrackId = audioCfg?.musicTrackId ?? null
+  // Background music is present when EITHER a global Music Center track or a
+  // legacy project-scoped track is selected — the volume applies to whichever.
+  const hasMusic = Boolean(musicId || musicTrackId)
 
   return (
     <section className={styles.workspace} aria-label="Crear comercial">
@@ -552,43 +588,58 @@ export function HomeWorkspace({
               <div className={styles.audioSection} data-testid="audio-section">
                 <p className={styles.audioSectionTitle}>{copy.audio.title}</p>
 
-                {musicCandidates.length > 0 ? (
-                  <>
-                    <label className={styles.musicSelect} data-testid="music-select-label">
-                      <span>{copy.audio.musicLabel}</span>
-                      <select
-                        value={musicId ?? ''}
-                        onChange={(e) => void onSelectMusic(e.target.value || null)}
-                        data-testid="music-select"
-                      >
-                        <option value="">{copy.audio.noMusic}</option>
-                        {musicCandidates.map((m) => (
-                          <option key={m.id} value={m.id}>
-                            {m.originalName}
-                          </option>
-                        ))}
-                      </select>
-                    </label>
-                    <label className={styles.audioControl}>
-                      <span>{copy.audio.musicVolume}</span>
-                      <input
-                        type="range"
-                        min={0}
-                        max={1}
-                        step={0.05}
-                        value={audioCfg?.musicVolume ?? 0.8}
-                        onChange={(e) => onMusicVolume(Number(e.target.value))}
-                        disabled={!musicId}
-                        data-testid="music-volume"
-                        aria-label={copy.audio.musicVolume}
-                      />
-                    </label>
-                  </>
+                {musicTrackId ? (
+                  <div className={styles.libraryMusic} data-testid="library-music">
+                    <span className={styles.audioSectionSub}>{copy.audio.musicLabel}</span>
+                    <span className={styles.libraryMusicName} data-testid="library-music-name">
+                      {libraryMusicTitle ?? '…'}
+                    </span>
+                    <button
+                      type="button"
+                      className={styles.mediaRemove}
+                      aria-label="Quitar música"
+                      onClick={() => void onRemoveLibraryMusic()}
+                      data-testid="library-music-remove"
+                    >
+                      <Icon name="x" size={14} />
+                    </button>
+                  </div>
+                ) : musicCandidates.length > 0 ? (
+                  <label className={styles.musicSelect} data-testid="music-select-label">
+                    <span>{copy.audio.musicLabel}</span>
+                    <select
+                      value={musicId ?? ''}
+                      onChange={(e) => void onSelectMusic(e.target.value || null)}
+                      data-testid="music-select"
+                    >
+                      <option value="">{copy.audio.noMusic}</option>
+                      {musicCandidates.map((m) => (
+                        <option key={m.id} value={m.id}>
+                          {m.originalName}
+                        </option>
+                      ))}
+                    </select>
+                  </label>
                 ) : (
                   <p className={styles.audioNote} data-testid="no-music-note">
                     {copy.audio.noMusicImported}
                   </p>
                 )}
+                {hasMusic ? (
+                  <label className={styles.audioControl}>
+                    <span>{copy.audio.musicVolume}</span>
+                    <input
+                      type="range"
+                      min={0}
+                      max={1}
+                      step={0.05}
+                      value={audioCfg?.musicVolume ?? 0.8}
+                      onChange={(e) => onMusicVolume(Number(e.target.value))}
+                      data-testid="music-volume"
+                      aria-label={copy.audio.musicVolume}
+                    />
+                  </label>
+                ) : null}
 
                 {soundVideos.length > 0 ? (
                   <div className={styles.sourceAudioBlock} data-testid="source-audio-section">

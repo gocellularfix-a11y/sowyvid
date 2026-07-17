@@ -1,0 +1,269 @@
+.center {
+  padding: 22px 26px;
+}
+.head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  margin-bottom: 18px;
+  flex-wrap: wrap;
+}
+.heading {
+  margin: 0;
+  font-size: 1.4rem;
+}
+.tabs {
+  display: flex;
+  gap: 6px;
+  background: rgba(255, 255, 255, 0.05);
+  padding: 4px;
+  border-radius: 999px;
+}
+.tab {
+  border: none;
+  background: none;
+  color: var(--text-dim, #b9b9c6);
+  padding: 7px 16px;
+  border-radius: 999px;
+  cursor: pointer;
+  font-size: 0.9rem;
+}
+.tabOn {
+  background: var(--brand, #7c5cff);
+  color: #fff;
+}
+
+.toolbar {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+  align-items: center;
+  margin-bottom: 16px;
+}
+.search {
+  flex: 1;
+  min-width: 200px;
+  padding: 8px 12px;
+  border-radius: var(--radius-md, 10px);
+  border: 1px solid var(--border-subtle, rgba(255, 255, 255, 0.14));
+  background: rgba(255, 255, 255, 0.05);
+  color: inherit;
+}
+.toolbar select {
+  padding: 8px 10px;
+  border-radius: var(--radius-md, 10px);
+  border: 1px solid var(--border-subtle, rgba(255, 255, 255, 0.14));
+  background: rgba(255, 255, 255, 0.05);
+  color: inherit;
+}
+
+.trackList {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+.card {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+  padding: 12px 14px;
+  border: 1px solid var(--border-subtle, rgba(255, 255, 255, 0.12));
+  border-radius: var(--radius-lg, 14px);
+  background: var(--surface, rgba(255, 255, 255, 0.03));
+}
+.cardSelected {
+  border-color: var(--brand, #7c5cff);
+  box-shadow: 0 0 0 1px var(--brand, #7c5cff) inset;
+}
+.playBtn {
+  flex-shrink: 0;
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  border: 1px solid var(--border-subtle, rgba(255, 255, 255, 0.18));
+  background: rgba(255, 255, 255, 0.06);
+  color: inherit;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.playBtn:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+.cardMain {
+  flex: 1;
+  min-width: 0;
+}
+.cardTitle {
+  font-weight: 600;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+.selectedTag {
+  font-size: 0.7rem;
+  background: var(--brand, #7c5cff);
+  color: #fff;
+  padding: 2px 8px;
+  border-radius: 999px;
+  font-weight: 500;
+}
+.cardMeta {
+  font-size: 0.8rem;
+  color: var(--text-dim, #9a9aa8);
+  margin-top: 2px;
+}
+.warn {
+  margin-top: 4px;
+  font-size: 0.8rem;
+  color: var(--danger, #ff6b6b);
+}
+.warnSoft {
+  margin-top: 4px;
+  font-size: 0.78rem;
+  color: #ffcf6b;
+}
+.previewRow {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-top: 8px;
+}
+.previewRow input[type='range'] {
+  flex: 1;
+  accent-color: var(--brand, #7c5cff);
+}
+.previewVol {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  width: 110px;
+}
+.time {
+  font-size: 0.75rem;
+  color: var(--text-dim, #9a9aa8);
+  min-width: 70px;
+}
+.cardActions {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  flex-shrink: 0;
+}
+
+.empty {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 12px;
+  padding: 72px 24px;
+  color: var(--text-dim, #9a9aa8);
+  text-align: center;
+}
+
+.form {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  max-height: 60vh;
+  overflow-y: auto;
+}
+.formRow {
+  display: flex;
+  gap: 10px;
+}
+.formRow .field {
+  flex: 1;
+}
+.field {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  font-size: 0.82rem;
+  color: var(--text-dim, #b9b9c6);
+}
+.field input,
+.field select {
+  padding: 8px 10px;
+  border-radius: var(--radius-md, 8px);
+  border: 1px solid var(--border-subtle, rgba(255, 255, 255, 0.14));
+  background: rgba(255, 255, 255, 0.05);
+  color: var(--text, #ececf2);
+}
+.checkboxField {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 0.85rem;
+}
+.dialogActions {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: 8px;
+  margin-top: 12px;
+}
+.usageList {
+  margin: 0;
+  padding-left: 18px;
+  font-size: 0.9rem;
+}
+
+/* Suno */
+.suno {
+  max-width: 760px;
+}
+.sunoIntro {
+  margin: 0 0 12px;
+  color: var(--text-dim, #b9b9c6);
+}
+.sunoControls {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  flex-wrap: wrap;
+}
+.currentFor {
+  font-size: 0.85rem;
+  color: var(--text-dim, #b9b9c6);
+}
+.sunoNote {
+  font-size: 0.8rem;
+  color: var(--text-dim, #9a9aa8);
+  margin: 8px 0 0;
+}
+.brief {
+  margin-top: 18px;
+  border: 1px solid var(--border-subtle, rgba(255, 255, 255, 0.12));
+  border-radius: var(--radius-lg, 14px);
+  padding: 16px;
+}
+.briefRow {
+  display: flex;
+  gap: 12px;
+  padding: 5px 0;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+}
+.briefLabel {
+  width: 130px;
+  flex-shrink: 0;
+  font-weight: 600;
+  font-size: 0.85rem;
+}
+.briefValue {
+  font-size: 0.85rem;
+  color: var(--text-dim, #cfcfd8);
+}
+.briefPrompt {
+  margin: 12px 0 0;
+  padding: 12px;
+  background: rgba(0, 0, 0, 0.25);
+  border-radius: var(--radius-md, 10px);
+  white-space: pre-wrap;
+  font-size: 0.8rem;
+  line-height: 1.5;
+}
