@@ -3,6 +3,7 @@ import { mkdir, access } from 'node:fs/promises'
 import { join } from 'node:path'
 import { promisify } from 'node:util'
 import type { MediaAsset } from '@shared/domain/media'
+import { unpackedBinaryPath } from './unpackedPath'
 
 /**
  * Media analysis via a controlled FFprobe/FFmpeg boundary. All invocations use
@@ -40,7 +41,12 @@ async function resolveTools(): Promise<Tools> {
   } catch {
     ffmpeg = process.env.SOWYVID_FFMPEG ?? null
   }
-  cachedTools = { ffprobe, ffmpeg }
+  // Packaged apps: the modules report a path inside app.asar, but spawn cannot
+  // execute from an archive — the real binaries live in app.asar.unpacked.
+  cachedTools = {
+    ffprobe: ffprobe ? unpackedBinaryPath(ffprobe) : null,
+    ffmpeg: ffmpeg ? unpackedBinaryPath(ffmpeg) : null,
+  }
   return cachedTools
 }
 

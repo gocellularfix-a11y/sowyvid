@@ -25,6 +25,16 @@ if (!app.isPackaged && process.env.SOWYVID_USER_DATA) {
   app.setPath('userData', process.env.SOWYVID_USER_DATA)
 }
 
+// Packaged-validation seam: the packaged E2E suite must exercise the REAL .exe
+// without ever touching the owner's actual data, so a separate, deliberately
+// named variable is honored even when packaged. Redirecting one's own local
+// app data is already in any local user's power (it is not a security
+// boundary); the distinct name exists so no production tooling sets it by
+// accident.
+if (app.isPackaged && process.env.SOWYVID_E2E_USER_DATA) {
+  app.setPath('userData', process.env.SOWYVID_E2E_USER_DATA)
+}
+
 const isDev = !app.isPackaged
 const RENDERER_DEV_URL = process.env.ELECTRON_RENDERER_URL
 

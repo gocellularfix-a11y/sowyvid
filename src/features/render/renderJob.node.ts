@@ -32,6 +32,14 @@ export interface RenderJobInput {
   /** Scratch directory; cleaned up on success, failure and cancel. */
   tempRoot: string
   /**
+   * Headless browser path for Remotion. Null → Remotion's own resolution
+   * (development). Packaged apps must pass the shipped browser — there is no
+   * node_modules/.remotion to download into.
+   */
+  browserExecutable?: string | null
+  /** Compositor binaries dir. Null → Remotion's own resolution (development). */
+  binariesDirectory?: string | null
+  /**
    * Resolves managed asset IDs to absolute paths for the render-only loopback
    * server. Required because the render's headless Chrome cannot use the
    * Electron `sowyvid-media://` scheme — see mediaServer.node.ts.
@@ -126,6 +134,8 @@ export async function runRenderJob(
       serveUrl,
       id: COMMERCIAL_COMPOSITION_ID,
       inputProps: props,
+      browserExecutable: input.browserExecutable ?? null,
+      binariesDirectory: input.binariesDirectory ?? null,
     })
     report('preparing', 1)
     throwIfCancelled()
@@ -139,6 +149,8 @@ export async function runRenderJob(
       serveUrl,
       codec: 'h264',
       audioCodec: 'aac',
+      browserExecutable: input.browserExecutable ?? null,
+      binariesDirectory: input.binariesDirectory ?? null,
       // Never let Remotion invent a silent track: when the plan has no audio we
       // say so explicitly, so a silent export is a recorded decision rather than
       // an accident that looks identical to a broken one.

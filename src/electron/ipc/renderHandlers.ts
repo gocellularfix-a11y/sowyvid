@@ -195,6 +195,8 @@ function startJob(
           outputPath,
           cache: env.cache,
           tempRoot: env.tempRoot,
+          browserExecutable: env.browserExecutable,
+          binariesDirectory: env.binariesDirectory,
           resolveAsset,
         },
         { signal, onProgress },

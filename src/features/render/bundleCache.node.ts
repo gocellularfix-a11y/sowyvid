@@ -102,6 +102,53 @@ export async function currentBundleFingerprint(options: BundleCacheOptions): Pro
   return computeBundleFingerprint({ files, dependencyVersions })
 }
 
+/**
+ * Compile the Remotion bundle from source. Used by the development render path
+ * AND by scripts/prepare-render-bundle.ts at package time — one compiler, so
+ * the shipped bundle cannot differ from what development renders.
+ */
+export async function compileRenderBundle(
+  projectRoot: string,
+  outDir: string,
+  onProgress?: (percent: number) => void,
+): Promise<string> {
+  const { bundle } = await import('@remotion/bundler')
+  return bundle({
+    entryPoint: resolve(projectRoot, 'src/render/remotionEntry.ts'),
+    outDir,
+    onProgress: (p) => onProgress?.(p),
+    // Remotion's webpack knows nothing about our path aliases. Without this the
+    // bundle cannot resolve the vendored engines, and export fails while every
+    // other bundler is perfectly happy — so the map is shared, not re-typed.
+    webpackOverride: (config) => ({
+      ...config,
+      resolve: {
+        ...config.resolve,
+        alias: { ...config.resolve?.alias, ...allAliases(projectRoot) },
+      },
+    }),
+  })
+}
+
+/**
+ * Package-time entry: compile the bundle and stamp it with the CURRENT source
+ * fingerprint, producing exactly what `prebuilt` mode expects in resources.
+ */
+export async function buildPrebuiltRenderBundle(
+  projectRoot: string,
+  outDir: string,
+): Promise<{ fingerprint: string }> {
+  const fingerprint = await currentBundleFingerprint({ projectRoot, cacheRoot: outDir })
+  await compileRenderBundle(projectRoot, outDir)
+  const stamp: BundleStamp = {
+    fingerprint,
+    stampVersion: BUNDLE_STAMP_VERSION,
+    builtAt: new Date().toISOString(),
+  }
+  await writeFile(join(outDir, BUNDLE_STAMP_FILE), JSON.stringify(stamp, null, 2), 'utf8')
+  return { fingerprint }
+}
+
 async function readStamp(bundleDir: string): Promise<unknown> {
   try {
     return JSON.parse(await readFile(join(bundleDir, BUNDLE_STAMP_FILE), 'utf8'))
@@ -169,22 +216,7 @@ export async function ensureRenderBundle(
     hooks.onProgress?.(100)
     serveUrl = bundleDir
   } else {
-    const { bundle } = await import('@remotion/bundler')
-    serveUrl = await bundle({
-      entryPoint: resolve(options.projectRoot, 'src/render/remotionEntry.ts'),
-      outDir: bundleDir,
-      onProgress: (p) => hooks.onProgress?.(p),
-      // Remotion's webpack knows nothing about our path aliases. Without this the
-      // bundle cannot resolve the vendored engines, and export fails while every
-      // other bundler is perfectly happy — so the map is shared, not re-typed.
-      webpackOverride: (config) => ({
-        ...config,
-        resolve: {
-          ...config.resolve,
-          alias: { ...config.resolve?.alias, ...allAliases(options.projectRoot) },
-        },
-      }),
-    })
+    serveUrl = await compileRenderBundle(options.projectRoot, bundleDir, hooks.onProgress)
   }
 
   // Stamp only AFTER a successful build, so a crashed build can never be

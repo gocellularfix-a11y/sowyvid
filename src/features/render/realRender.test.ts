@@ -387,6 +387,53 @@ describe.runIf(enabled)('production MP4 render', () => {
   }, 120_000)
 })
 
+describe.runIf(enabled)('render failures leave the project safe (§17)', () => {
+  it('fails cleanly when the output folder is unavailable — no scratch, no partial file', async () => {
+    // A FILE sits where the destination folder should be, so the folder can
+    // neither exist nor be created — the deterministic equivalent of a drive
+    // that disappeared after the save dialog. The bundle is already cached, so
+    // this fails at PUBLISH time: the finished MP4 sits in scratch and must
+    // not leak anywhere else.
+    const blocker = join(workRoot, 'blocked-folder')
+    writeFileSync(blocker, 'this is a file, not a folder')
+    const dest = join(blocker, 'sub', 'comercial.mp4')
+
+    await expect(
+      runRenderJob({
+        projectId: 'proj_nofolder',
+        props,
+        preset: { id: 'instagram-reel', resolution: 720 },
+        outputPath: dest,
+        cache: { projectRoot: repoRoot, cacheRoot },
+        tempRoot,
+        resolveAsset,
+      }),
+    ).rejects.toThrow()
+
+    expect(existsSync(dest)).toBe(false)
+    expect(existsSync(join(tempRoot, `render-proj_nofolder-${process.pid}`))).toBe(false)
+  }, 600_000)
+
+  it('fails fast when the headless browser cannot resolve, with clean scratch', async () => {
+    const out = join(outDir, 'nobrowser.mp4')
+    await expect(
+      runRenderJob({
+        projectId: 'proj_nobrowser',
+        props,
+        preset: { id: 'instagram-reel', resolution: 720 },
+        outputPath: out,
+        cache: { projectRoot: repoRoot, cacheRoot },
+        tempRoot,
+        browserExecutable: join(workRoot, 'no-such-browser.exe'),
+        resolveAsset,
+      }),
+    ).rejects.toThrow()
+    // The project is safe: no output published, no scratch left behind.
+    expect(existsSync(out)).toBe(false)
+    expect(existsSync(join(tempRoot, `render-proj_nobrowser-${process.pid}`))).toBe(false)
+  }, 600_000)
+})
+
 describe.runIf(enabled)('silence detection actually works', () => {
   it('flags a genuinely silent track as inaudible', async () => {
     // Guards the guard: if this passed on silence, every audio assertion above

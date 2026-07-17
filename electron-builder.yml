@@ -6,11 +6,43 @@ directories:
   buildResources: build
 files:
   - out/**/*
+  - '!out/render-bundle/**'
   - package.json
+  # The bundler is dev-only: the packaged app renders from the prebuilt bundle
+  # in resources (see extraResources) and never runs webpack. Excluding it (and
+  # its toolchain) keeps ~60MB of compiler out of the shipped app.
+  - '!**/node_modules/@remotion/bundler/**'
+  - '!**/node_modules/webpack/**'
+  - '!**/node_modules/webpack-*/**'
+
+# Binaries cannot execute from inside an asar archive. Electron transparently
+# redirects fs/child_process for unpacked files, so everything that must run as
+# a real file lives in app.asar.unpacked:
+#   - ffmpeg/ffprobe (media analysis at import time)
+#   - Remotion's native compositor (spawned per render; ships its own ffmpeg)
+#   - sql.js wasm
 asarUnpack:
   - '**/*.wasm'
   - node_modules/ffmpeg-static/**
   - node_modules/ffprobe-static/**
+  - node_modules/@remotion/renderer/**
+  - node_modules/@remotion/compositor-win32-x64-msvc/**
+
+extraResources:
+  # The prebuilt, fingerprint-stamped Remotion render bundle
+  # (scripts/prepare-render-bundle.ts). The packaged app copies it into its
+  # fingerprinted cache at render time — docs/RENDER-BUNDLE-CACHE.md.
+  - from: out/render-bundle
+    to: render-bundle
+  # Remotion's Chrome Headless Shell. Development downloads it into
+  # node_modules/.remotion; a packaged app has no such directory and must not
+  # download at runtime, so the exact browser used in development ships here.
+  - from: node_modules/.remotion/chrome-headless-shell/win64/chrome-headless-shell-win64
+    to: chrome-headless-shell
+    filter:
+      - '**/*'
+      - '!debug.log'
+
 win:
   target:
     - nsis

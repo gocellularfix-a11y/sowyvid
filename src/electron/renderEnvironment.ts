@@ -18,6 +18,19 @@ import type { BundleCacheOptions } from '@features/render/bundleCache.node'
 export interface RenderEnvironment {
   cache: BundleCacheOptions
   tempRoot: string
+  /**
+   * Headless browser for @remotion/renderer. Null in development (Remotion
+   * resolves its own download under node_modules/.remotion); in a packaged app
+   * that directory does not exist, so the browser ships in resources.
+   */
+  browserExecutable: string | null
+  /**
+   * Directory holding Remotion's native compositor binaries. Null in
+   * development (Remotion resolves its platform package from node_modules); in
+   * a packaged app the package sits inside app.asar, and binaries cannot spawn
+   * from an archive — this points at the asar-UNPACKED copy.
+   */
+  binariesDirectory: string | null
 }
 
 export function getRenderEnvironment(): RenderEnvironment {
@@ -37,6 +50,18 @@ export function getRenderEnvironment(): RenderEnvironment {
         prebuilt: { dir: join(process.resourcesPath, 'render-bundle') },
       },
       tempRoot,
+      browserExecutable: join(
+        process.resourcesPath,
+        'chrome-headless-shell',
+        'chrome-headless-shell.exe',
+      ),
+      binariesDirectory: join(
+        process.resourcesPath,
+        'app.asar.unpacked',
+        'node_modules',
+        '@remotion',
+        'compositor-win32-x64-msvc',
+      ),
     }
   }
 
@@ -45,5 +70,7 @@ export function getRenderEnvironment(): RenderEnvironment {
   return {
     cache: { projectRoot: repoRoot, cacheRoot },
     tempRoot,
+    browserExecutable: null,
+    binariesDirectory: null,
   }
 }

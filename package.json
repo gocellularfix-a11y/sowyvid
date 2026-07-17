@@ -28,7 +28,10 @@
     "test:e2e": "playwright test",
     "test:e2e:electron": "npm run build && playwright test --config playwright.electron.config.ts",
     "postinstall": "node scripts/copy-sql-wasm.mjs",
-    "verify:render": "vitest run src/features/render/realRender.test.ts --testTimeout=900000"
+    "verify:render": "vitest run src/features/render/realRender.test.ts --testTimeout=900000",
+    "prepare:render-bundle": "vite-node --config vitest.config.ts scripts/prepare-render-bundle.ts",
+    "package:win": "npm run build && npm run prepare:render-bundle && electron-builder --win --dir",
+    "test:e2e:packaged": "npm run package:win && playwright test --config playwright.packaged.config.ts"
   },
   "dependencies": {
     "@remotion/renderer": "^4.0.230",
