@@ -70,6 +70,14 @@ export-button.spec.ts`) **and inside the packaged Windows `.exe`** with a
 planted stale cache: 1080×1920, 18.05s, h264+aac, **−26.9 dBFS**
 (`docs/WINDOWS-PACKAGED-VALIDATION.md`).
 
+**The owner's work survives restart**: on startup the most recent project is
+restored — id, media, brief, music selection, compiled plans — so step 4 comes
+back alive with the preview, the export button and the export history. Imported
+music **auto-selects** as the commercial's music (owner can change/remove it via
+"Música del comercial"). Both behaviors exist because Jorge's first packaged
+test found them missing: silent exports (imported music never selected) and
+invisible history (no state restoration).
+
 ## What is NOT done (do not claim these work)
 
 - **The NSIS installer is unvalidated** — packaged validation used the
@@ -139,8 +147,18 @@ Current status: typecheck ✓ · lint ✓ · **304 unit** ✓ · **5 browser e2e
 - **sql.js** (not native `better-sqlite3`) so `npm install`/build never needs a C++
   toolchain. DB persisted via atomic temp-file+rename.
 - **SVG is rejected** on import (active-content risk).
-- ffmpeg/ffprobe resolve from `node_modules` (dev); packaging uses `asarUnpack` (not
-  yet exercised via a packaged build).
+- **Binaries cannot spawn from inside an asar.** Electron's patched `fs` redirects
+  *reads* of asar-unpacked files, but `spawn`/`execFile` do not — module-reported
+  paths must go through `unpackedBinaryPath()` (`src/features/media/unpackedPath.ts`),
+  and Remotion's compositor gets `binariesDirectory` pointing at the unpacked copy.
+  Found the hard way: packaged media analysis failed with `spawn …app.asar… ENOENT`
+  while every development test was green.
+- **Test what the owner can do, not what the harness can do.** The packaged suite
+  once set the music selection through `window.sowyvid` and asserted history through
+  the bridge — it went green while Jorge's real exports were silent and his history
+  was invisible. The suites now drive only the owner's buttons (dialog answers come
+  from env seams: `SOWYVID_E2E_IMPORT_PATHS`, `SOWYVID_E2E_EXPORT_DIR`,
+  `SOWYVID_E2E_USER_DATA`, `SOWYVID_E2E_SUPPRESS_OPEN`) and assert what is VISIBLE.
 - **Provisional brand** — do not package/sign/publish publicly under "SowyVid"
   (`docs/BRANDING.md`).
 - On Windows, Electron prints a benign `UV_HANDLE_CLOSING` line on shutdown during
