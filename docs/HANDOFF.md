@@ -1,7 +1,8 @@
 # SowyVid — Engineering Handoff
 
-_Last updated at the owner hotfix (audible packaged exports + restored export
-history; commits `7b7939a`/`ef34a5b`), branch `main`, synced with `origin/main`._
+_Last updated at the owner-workflow-recovery milestone, with the A/B/C/D
+acceptance flow proven inside the packaged `.exe` (application commit `34e7602`),
+branch `main`, synced with `origin/main`._
 
 ## What this is
 
@@ -113,6 +114,38 @@ controls (`e2e-electron/owner-workflow.spec.ts` — scenarios A/B/C/D):
   keep-exported-videos choice; files outside managed storage are removed only on
   explicit confirmation.
 
+### Packaged owner-acceptance evidence (application commit `34e7602`)
+
+The full A/B/C/D acceptance flow was run **inside the real packaged executable**,
+`C:\sowyvid\release\win-unpacked\SowyVid.exe`, driving only visible owner
+controls (bridge calls appear solely as read-only assertions). Proven by
+`e2e-packaged/owner-workflow.packaged.spec.ts`:
+
+- **MP4 content identification** — an imported video that carries an audio
+  stream shows the analyzed-content tile **`Video · Con audio`** (never treated
+  as background music).
+- **Source-video audio export** — with "Audio original del video" enabled, the
+  packaged export carried measurable AAC signal at **≈ −28.9 dBFS**.
+- **Replacement background-music export** — after muting the original audio,
+  importing an MP3 and selecting it, the packaged export carried measurable
+  music at **≈ −26.9 dBFS**.
+- **Two distinct persisted commercial IDs** — Commercial A `proj_w-eMPrOu_W` and
+  Commercial B `proj_QYBe3G3gGW` (asserted `B ≠ A`).
+- **Both commercials visible in "Mis comerciales" after restart** — after
+  closing and relaunching the `.exe`, both cards remained listed.
+- **Each commercial shows its own export history** — the per-commercial "Videos
+  creados" list showed each commercial's own exported video(s).
+- **Referenced-media removal through the visible decision dialog** — removing the
+  used video opened the Reemplazar / Quitar del comercial y eliminar / Cancelar
+  dialog; the owner confirmed removal.
+- **Previously exported MP4s preserved after source-media removal** — both of
+  Commercial A's earlier exports remained on disk after the video was removed,
+  and the project stayed usable (still compiles and can export).
+- **Commercial deletion preserving exported files** — deleting Commercial B with
+  "conservar los videos ya exportados" left its exported MP4 intact on disk.
+- **Final restart leaves only the intended survivor** — after a further restart,
+  only Commercial A remained (`survivors === [proj_w-eMPrOu_W]`).
+
 ## What is NOT done (do not claim these work)
 
 - **The NSIS installer is unvalidated** — packaged validation used the
@@ -155,8 +188,9 @@ npm run test:e2e:packaged # packages, launches the REAL SowyVid.exe, validates i
 ```
 
 Current status: typecheck ✓ · lint ✓ · **320 unit** ✓ · **6 browser e2e** ✓ ·
-**8 real-Electron e2e** ✓ · **2 packaged e2e** ✓ · build ✓ ·
-**verify:render ✓ (13 tests)**. Honest per-feature state:
+**8 real-Electron e2e** ✓ · **13 real-render checks** ✓ · **3 packaged e2e** ✓ ·
+build ✓. The 3 packaged e2e are the two export/edge specs plus the new
+`owner-workflow.packaged.spec.ts` (A/B/C/D). Honest per-feature state:
 **`docs/CURRENT-STATUS.md`**.
 
 ## Key locations
