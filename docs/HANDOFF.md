@@ -1,6 +1,7 @@
 # SowyVid — Engineering Handoff
 
-_Last updated at commit `aad43b5` (branch `main`, synced with `origin/main`)._
+_Last updated at the owner hotfix (audible packaged exports + restored export
+history; commits `7b7939a`/`ef34a5b`), branch `main`, synced with `origin/main`._
 
 ## What this is
 

@@ -33,7 +33,11 @@ const FFPROBE = ffprobeStatic.path
 /** Same silence threshold as the existing render verification. */
 const SILENCE_THRESHOLD_DB = -50
 
-async function launchPackaged(userDataDir: string, exportDir: string): Promise<ElectronApplication> {
+async function launchPackaged(
+  userDataDir: string,
+  exportDir: string,
+  importPaths: string[] = [],
+): Promise<ElectronApplication> {
   return electron.launch({
     executablePath: packagedExe,
     args: [],
@@ -42,6 +46,8 @@ async function launchPackaged(userDataDir: string, exportDir: string): Promise<E
       SOWYVID_E2E_USER_DATA: userDataDir,
       SOWYVID_E2E_EXPORT_DIR: exportDir,
       SOWYVID_E2E_SUPPRESS_OPEN: '1',
+      // Answers the OPEN dialog when the real "Este equipo" button is clicked.
+      SOWYVID_E2E_IMPORT_PATHS: importPaths.join(';'),
     },
   })
 }
@@ -162,55 +168,58 @@ test('the packaged SowyVid.exe exports a real audiovisual MP4 from a planted sta
     JSON.stringify({ fingerprint: 'pre-audio-june-16', stampVersion: 1, builtAt: '2026-06-16T00:00:00.000Z' }),
   )
 
-  const app = await launchPackaged(userData, exportDir)
+  const app = await launchPackaged(userData, exportDir, [photo, clip, music])
   const page = await app.firstWindow()
 
   // The packaged app really is packaged (not a dev binary in disguise).
   const isPackaged = await app.evaluate(({ app: electronApp }) => electronApp.isPackaged)
   expect(isPackaged).toBe(true)
 
-  // --- the owner's workflow, in the packaged UI ---
+  // --- the owner's workflow, in the packaged UI, buttons only ---
   await page.getByLabel('Cuéntanos qué quieres promocionar').fill('Teléfonos certificados con garantía')
   await page.getByRole('button', { name: /Continuar/ }).click()
   await expect(page.getByTestId('commercial-summary')).toBeVisible({ timeout: 30_000 })
 
-  // Real managed media through the packaged import path (magic-byte checks,
-  // hashing, ffprobe analysis — all with PACKAGED ffmpeg/ffprobe).
-  const setup = await page.evaluate(
-    async ({ photoPath, clipPath, musicPath }) => {
-      const bridge = window.sowyvid!
-      const projects = await bridge.projects.list()
-      if (!projects.ok || projects.value.length === 0) throw new Error('no project')
-      const project = projects.value[0]!
+  // Real managed media through the REAL "Este equipo" button (the E2E seam
+  // answers only the open dialog; magic-byte checks, hashing and ffprobe
+  // analysis all run with PACKAGED ffmpeg/ffprobe).
+  //
+  // Nothing sets project.audio.musicId: Jorge has no bridge. The owner's only
+  // action is importing the music file — the app must select it itself. This
+  // is exactly the gap that shipped a silent export: the old test set musicId
+  // through the bridge and validated a path the owner cannot take.
+  await page.getByRole('button', { name: /Este equipo/ }).click()
+  await expect(page.getByText(/3 archivo\(s\) agregado\(s\)/)).toBeVisible({ timeout: 120_000 })
 
-      const imported = await bridge.media.import({
-        projectId: project.id,
-        paths: [photoPath, clipPath, musicPath],
-      })
-      if (!imported.ok) throw new Error(`import failed: ${imported.error.message}`)
-      const media = imported.value.project.media
-      const musicAsset = media.find((m) => m.kind === 'audio')
-      const videoAsset = media.find((m) => m.kind === 'video')
-      if (!musicAsset) throw new Error('music did not import')
+  // The owner can SEE the auto-selected music and could change it.
+  const musicSelect = page.getByTestId('music-select')
+  await expect(musicSelect).toBeVisible()
+  await expect(musicSelect).not.toHaveValue('')
 
-      const saved = await bridge.projects.save({
-        ...imported.value.project,
-        audio: { ...imported.value.project.audio, musicId: musicAsset.id },
-      })
-      if (!saved.ok) throw new Error('save failed')
-      return {
-        projectId: project.id,
-        // Packaged ffprobe/ffmpeg really ran: analysis produced duration+poster.
-        musicAnalyzed: musicAsset.analysisStatus === 'ready' && musicAsset.durationSec !== null,
-        videoAnalyzed: videoAsset
-          ? videoAsset.analysisStatus === 'ready' && videoAsset.posterRelPath !== null
-          : false,
-      }
-    },
-    { photoPath: photo, clipPath: clip, musicPath: music },
-  )
+  const setup = await page.evaluate(async () => {
+    const bridge = window.sowyvid!
+    const projects = await bridge.projects.list()
+    if (!projects.ok || projects.value.length === 0) throw new Error('no project')
+    const project = projects.value[0]!
+    const musicAsset = project.media.find((m) => m.kind === 'audio')
+    const videoAsset = project.media.find((m) => m.kind === 'video')
+    if (!musicAsset) throw new Error('music did not import')
+    return {
+      projectId: project.id,
+      // The fix under test: importing music selected it, with no owner action.
+      autoSelectedMusicId: project.audio.musicId,
+      musicAssetId: musicAsset.id,
+      // Packaged ffprobe/ffmpeg really ran: analysis produced duration+poster.
+      musicAnalyzed: musicAsset.analysisStatus === 'ready' && musicAsset.durationSec !== null,
+      videoAnalyzed: videoAsset
+        ? videoAsset.analysisStatus === 'ready' && videoAsset.posterRelPath !== null
+        : false,
+    }
+  })
   expect(setup.musicAnalyzed, 'packaged ffprobe must analyze audio').toBe(true)
   expect(setup.videoAnalyzed, 'packaged ffmpeg must produce a video poster').toBe(true)
+  expect(setup.autoSelectedMusicId, 'imported music must be auto-selected').toBe(setup.musicAssetId)
+  await expect(musicSelect).toHaveValue(setup.musicAssetId)
 
   // The preview mounts with the imported media (served by the packaged protocol).
   await expect(page.getByTestId('preview-player')).toBeVisible()
@@ -310,16 +319,33 @@ test('the packaged SowyVid.exe exports a real audiovisual MP4 from a planted sta
 
   await app.close()
 
-  // --- §13/§8: restart the PACKAGED app; history must survive ---
+  // --- restart the PACKAGED app; history must survive AND BE VISIBLE ---
+  // Jorge's second failure: the row was always in the database, but the UI
+  // restored nothing on startup, so he saw a blank step 4. The assertion that
+  // matters is what the OWNER sees, not what the bridge can fetch.
   const app2 = await launchPackaged(userData, exportDir)
   const page2 = await app2.firstWindow()
-  const survived = await page2.evaluate(async (id) => {
-    const result = await window.sowyvid!.render.listHistory({ projectId: id })
-    return result.ok ? result.value : []
+
+  // The app restores the owner's project: same id, plans recompiled, step 4 live.
+  await expect(page2.getByTestId('commercial-summary')).toBeVisible({ timeout: 60_000 })
+  await expect(page2.getByTestId('export-panel')).toBeVisible()
+  await expect(page2.getByTestId('export-history')).toBeVisible()
+  await expect(page2.getByTestId('export-history-row').first()).toContainText('.mp4')
+  // The restored project is THE SAME project — not a fresh one.
+  const identity = await page2.evaluate(async (id) => {
+    const bridge = window.sowyvid!
+    const projects = await bridge.projects.list()
+    const rows = await bridge.render.listHistory({ projectId: id })
+    return {
+      projectCount: projects.ok ? projects.value.length : -1,
+      rows: rows.ok ? rows.value : [],
+    }
   }, setup.projectId)
-  expect(survived.length).toBe(1)
-  expect(survived[0]!.status).toBe('completed')
-  expect(survived[0]!.outputPath).toBe(outputPath)
+  expect(identity.projectCount).toBe(1)
+  expect(identity.rows.length).toBe(1)
+  expect(identity.rows[0]!.status).toBe('completed')
+  expect(identity.rows[0]!.outputPath).toBe(outputPath)
+  expect(identity.rows[0]!.fileExists).toBe(true)
   await app2.close()
 })
 

@@ -31,7 +31,11 @@ const FFPROBE = ffprobeStatic.path
 
 test.setTimeout(600_000)
 
-async function launch(userDataDir: string, exportDir: string): Promise<ElectronApplication> {
+async function launch(
+  userDataDir: string,
+  exportDir: string,
+  importPaths: string[] = [],
+): Promise<ElectronApplication> {
   return electron.launch({
     args: [mainEntry],
     env: {
@@ -39,6 +43,7 @@ async function launch(userDataDir: string, exportDir: string): Promise<ElectronA
       SOWYVID_USER_DATA: userDataDir,
       SOWYVID_E2E_EXPORT_DIR: exportDir,
       SOWYVID_E2E_SUPPRESS_OPEN: '1',
+      SOWYVID_E2E_IMPORT_PATHS: importPaths.join(';'),
     },
   })
 }
@@ -66,7 +71,7 @@ test('Descargar video produces a real MP4 and survives a restart', async () => {
   const exportDir = mkdtempSync(join(tmpdir(), 'sowyvid-btnout-'))
   const { photo, music } = await makeSources()
 
-  const app = await launch(userData, exportDir)
+  const app = await launch(userData, exportDir, [photo, music])
   const page = await app.firstWindow()
 
   // --- the owner creates their commercial through the real UI ---
@@ -74,28 +79,25 @@ test('Descargar video produces a real MP4 and survives a restart', async () => {
   await page.getByRole('button', { name: /Continuar/ }).click()
   await expect(page.getByTestId('commercial-summary')).toBeVisible({ timeout: 15_000 })
 
-  // --- give the project real managed media + music (same IPC as the picker) ---
-  const projectId = await page.evaluate(
-    async ({ photoPath, musicPath }) => {
-      const bridge = window.sowyvid!
-      const projects = await bridge.projects.list()
-      if (!projects.ok || projects.value.length === 0) throw new Error('no project')
-      const project = projects.value[0]!
+  // --- media + music through the REAL "Este equipo" button; the seam answers
+  // only the open dialog. Nothing sets musicId: the app must auto-select the
+  // imported music, and the owner must SEE that selection. ---
+  await page.getByRole('button', { name: /Este equipo/ }).click()
+  await expect(page.getByTestId('music-select')).toBeVisible({ timeout: 120_000 })
+  await expect(page.getByTestId('music-select')).not.toHaveValue('')
 
-      const imported = await bridge.media.import({ projectId: project.id, paths: [photoPath, musicPath] })
-      if (!imported.ok) throw new Error('import failed')
-      const musicAsset = imported.value.project.media.find((m) => m.kind === 'audio')
-      if (!musicAsset) throw new Error('music did not import as audio')
-
-      const saved = await bridge.projects.save({
-        ...imported.value.project,
-        audio: { ...imported.value.project.audio, musicId: musicAsset.id },
-      })
-      if (!saved.ok) throw new Error('save failed')
-      return project.id
-    },
-    { photoPath: photo, musicPath: music },
-  )
+  const projectId = await page.evaluate(async () => {
+    const bridge = window.sowyvid!
+    const projects = await bridge.projects.list()
+    if (!projects.ok || projects.value.length === 0) throw new Error('no project')
+    const project = projects.value[0]!
+    const musicAsset = project.media.find((m) => m.kind === 'audio')
+    if (!musicAsset) throw new Error('music did not import as audio')
+    if (project.audio.musicId !== musicAsset.id) {
+      throw new Error('imported music was not auto-selected as the commercial music')
+    }
+    return project.id
+  })
 
   // --- the gate reports ready through the same IPC the button uses ---
   const status = await page.evaluate(async (id) => {
@@ -172,9 +174,14 @@ test('Descargar video produces a real MP4 and survives a restart', async () => {
 
   await app.close()
 
-  // --- restart: the export history must survive ---
+  // --- restart: the export history must survive AND be visible in the UI ---
   const app2 = await launch(userData, exportDir)
   const page2 = await app2.firstWindow()
+  // The app restores the owner's project on startup — step 4 comes back alive
+  // with the history list, without generating anything again.
+  await expect(page2.getByTestId('export-panel')).toBeVisible({ timeout: 60_000 })
+  await expect(page2.getByTestId('export-history')).toBeVisible()
+  await expect(page2.getByTestId('export-history-row').first()).toContainText('.mp4')
   const survived = await page2.evaluate(async (id) => {
     const result = await window.sowyvid!.render.listHistory({ projectId: id })
     if (!result.ok) throw new Error('history failed after restart')

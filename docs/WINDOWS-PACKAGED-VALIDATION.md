@@ -1,9 +1,18 @@
 # Windows Packaged Validation
 
-> Status: **Validated.** The packaged `SowyVid.exe` (win-unpacked) produced and
-> validated a real audiovisual MP4 through the owner's own button, from a
-> planted stale cache, with measured audio. Evidence below. What remains
-> unvalidated is listed at the end — read it before claiming more.
+> Status: **Validated — owner's path only.** The packaged `SowyVid.exe`
+> (win-unpacked) produced and validated a real audiovisual MP4 using ONLY the
+> owner's buttons (Continuar → Este equipo → Descargar video), from a planted
+> stale cache, with measured audio, and the export history is visible in the UI
+> after a packaged restart. What remains unvalidated is listed at the end.
+>
+> **Post-mortem note:** the first version of this suite set the music selection
+> through `window.sowyvid` — a path the owner does not have — and went green
+> while Jorge's real exports were silent (an imported mp3 was never selected as
+> music) and his history was invisible after restart (no UI state restoration).
+> The suite now drives the owner's actual buttons, asserts the auto-selection,
+> and asserts what is VISIBLE after restart, not what the bridge can fetch.
+> Test what the owner can do, not what the test harness can do.
 
 ## How to run it
 
@@ -101,6 +110,7 @@ refresh deletion remains junction-guarded (`safeRemove.node.ts`).
 | `SOWYVID_E2E_USER_DATA` | redirects `userData` in a **packaged** app | so the packaged suite never touches real owner data. Redirecting one's own local app data is already in a local user's power; the distinct name exists so nothing sets it by accident. |
 | `SOWYVID_USER_DATA` | redirects `userData` in **unpackaged** runs only | pre-existing dev/test seam |
 | `SOWYVID_E2E_EXPORT_DIR` | replaces the save dialog's ANSWER with a numbered filename in that directory | the render path is byte-for-byte identical |
+| `SOWYVID_E2E_IMPORT_PATHS` | replaces the OPEN dialog's answer when the real "Este equipo" button is clicked | the import pipeline is identical; lets tests drive the owner's actual buttons |
 | `SOWYVID_E2E_SUPPRESS_OPEN` | skips the final `shell.openPath`/`showItemInFolder` side effect after all validation passed | automated runs must not spawn video players/Explorer windows |
 
 ## Remaining limitations (do not claim these)
