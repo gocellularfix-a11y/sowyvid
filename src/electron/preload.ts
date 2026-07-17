@@ -18,10 +18,14 @@ const bridge: SowyvidBridge = {
     get: (id) => ipcRenderer.invoke(IPC.ProjectGet, id),
     save: (project) => ipcRenderer.invoke(IPC.ProjectUpdate, project),
     delete: (id) => ipcRenderer.invoke(IPC.ProjectDelete, id),
+    duplicate: (input) => ipcRenderer.invoke(IPC.ProjectDuplicate, input),
+    deleteCommercial: (input) => ipcRenderer.invoke(IPC.ProjectDeleteCommercial, input),
   },
   media: {
     import: (input) => ipcRenderer.invoke(IPC.MediaImport, input),
     remove: (input) => ipcRenderer.invoke(IPC.MediaRemove, input),
+    replace: (input) => ipcRenderer.invoke(IPC.MediaReplace, input),
+    removeReferenced: (input) => ipcRenderer.invoke(IPC.MediaRemoveReferenced, input),
   },
   engine: {
     families: () => ipcRenderer.invoke(IPC.EngineFamilies),
@@ -33,6 +37,7 @@ const bridge: SowyvidBridge = {
     cancel: (input) => ipcRenderer.invoke(IPC.RenderCancel, input),
     status: (input) => ipcRenderer.invoke(IPC.RenderStatus, input),
     listHistory: (input) => ipcRenderer.invoke(IPC.RenderListHistory, input),
+    listHistoryAll: () => ipcRenderer.invoke(IPC.RenderListHistoryAll),
     retry: (input) => ipcRenderer.invoke(IPC.RenderRetry, input),
     openFile: (input) => ipcRenderer.invoke(IPC.RenderOpenFile, input),
     openFolder: (input) => ipcRenderer.invoke(IPC.RenderOpenFolder, input),

@@ -1,6 +1,9 @@
 import { app, dialog, shell, BrowserWindow } from 'electron'
 import { z } from 'zod'
 import { existsSync, statSync } from 'node:fs'
+import { mkdir } from 'node:fs/promises'
+import { execFile } from 'node:child_process'
+import { promisify } from 'node:util'
 import { join, dirname } from 'node:path'
 import { IPC } from '@shared/ipc/channels'
 import { ok, err } from '@shared/result'
@@ -28,6 +31,7 @@ import {
 } from '@features/render/exportPresets'
 import { defaultExportFileName, numberedIfTaken } from '@features/render/fileNaming'
 import { resolveManagedMediaPath, type MediaVariant } from '@features/media/managedPath'
+import { unpackedBinaryPath } from '@features/media/unpackedPath'
 import type { VisualPlan } from '@features/visual/visualPlan'
 import type { AudioPlan } from '@features/audio/audioPlan'
 import { getRenderEnvironment } from '../renderEnvironment'
@@ -51,6 +55,42 @@ import type { HandlerContext } from './registerHandlers'
  */
 
 const registry = new RenderJobRegistry()
+const execFileAsync = promisify(execFile)
+
+/** Extract a poster frame from a finished export into <project>/renders/. */
+async function generateExportPoster(
+  projectId: string,
+  exportId: string,
+  videoPath: string,
+): Promise<void> {
+  try {
+    const { binariesDirectory } = getRenderEnvironment()
+    const ffmpeg = binariesDirectory
+      ? join(binariesDirectory, process.platform === 'win32' ? 'ffmpeg.exe' : 'ffmpeg')
+      : null
+    const bin = ffmpeg && existsSync(ffmpeg) ? ffmpeg : await devFfmpeg()
+    if (!bin) return
+    const outDir = join(projectDir(projectId), 'renders')
+    await mkdir(outDir, { recursive: true })
+    await execFileAsync(
+      bin,
+      ['-y', '-ss', '1', '-i', videoPath, '-frames:v', '1', '-vf', 'scale=480:-2', join(outDir, `${exportId}.jpg`)],
+      { timeout: 20_000 },
+    )
+  } catch {
+    // Poster is decorative; the export record stands on its own.
+  }
+}
+
+async function devFfmpeg(): Promise<string | null> {
+  try {
+    const mod = await import('ffmpeg-static')
+    const reported = mod.default ?? null
+    return reported ? unpackedBinaryPath(reported) : null
+  } catch {
+    return null
+  }
+}
 
 /** Rebuild everything a render needs from the persisted project. Deterministic. */
 function buildArtifacts(project: Project): {
@@ -180,6 +220,9 @@ function startJob(
       // Awaited by the registry: "completed" is only reported once this row is
       // durable, so a restart right after success still shows the export.
       await ctx.db.persist()
+      // A visible still for the export library. Best-effort and detached: a
+      // missing poster degrades to an icon, never to a failed export.
+      void generateExportPoster(project.id, exportId, result.outputPath)
     },
     failHistory: async (exportId, code) => {
       ctx.repo.failExport(exportId, code)
@@ -266,6 +309,14 @@ export function registerRenderHandlers(ctx: HandlerContext): void {
 
   handle(IPC.RenderListHistory, z.object({ projectId: z.string() }), ({ projectId }) => {
     const records: ExportRecordWithFileState[] = ctx.repo.listExports(projectId).map((r) => ({
+      ...r,
+      fileExists: r.status === 'completed' && existsSync(r.outputPath),
+    }))
+    return ok(records)
+  })
+
+  handle(IPC.RenderListHistoryAll, z.any(), () => {
+    const records: ExportRecordWithFileState[] = ctx.repo.listAllExports().map((r) => ({
       ...r,
       fileExists: r.status === 'completed' && existsSync(r.outputPath),
     }))

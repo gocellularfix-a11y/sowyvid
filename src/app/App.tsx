@@ -1,16 +1,65 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { AppHeader } from './shell/AppHeader'
 import { Sidebar, type NavKey } from './shell/Sidebar'
 import { HomeWorkspace } from './features/home/HomeWorkspace'
+import { MyCommercials } from './features/library/MyCommercials'
 import { Icon, type IconName } from './ui/Icon'
 import { useToast } from './ui/toastContext'
-import { isBrowserPreview } from './bridge'
+import { getBridge, isBrowserPreview } from './bridge'
 import { copy } from './content/copy'
 import styles from './App.module.css'
 
+/**
+ * App owns WHICH commercial is current. The three ways it changes all live here
+ * so the rules stay in one place (§5):
+ *   - startup: restore the most recently updated commercial, if any
+ *   - library "Abrir": load the chosen commercial
+ *   - "Nuevo comercial": clear to a blank slate, no project row until the owner acts
+ *
+ * HomeWorkspace is remounted (via `key`) whenever the current commercial
+ * changes, so its internal state can never bleed between commercials.
+ */
 export function App(): JSX.Element {
   const [nav, setNav] = useState<NavKey>('home')
+  const [currentId, setCurrentId] = useState<string | null>(null)
+  const [restored, setRestored] = useState(isBrowserPreview)
+  // Bumped to force a fresh HomeWorkspace when starting a new commercial.
+  const [homeEpoch, setHomeEpoch] = useState(0)
   const toast = useToast()
+
+  // Startup restore: the repository lists by last update, so the first row is
+  // the owner's current work. Restoring ONE commercial never implies the others
+  // are gone — they remain in "Mis comerciales".
+  useEffect(() => {
+    if (isBrowserPreview) return
+    let cancelled = false
+    void (async () => {
+      const projects = await getBridge().projects.list()
+      if (cancelled) return
+      if (projects.ok && projects.value.length > 0) {
+        setCurrentId(projects.value[0]!.id)
+      }
+      setRestored(true)
+    })()
+    return () => {
+      cancelled = true
+    }
+  }, [])
+
+  const openCommercial = (projectId: string): void => {
+    setCurrentId(projectId)
+    setHomeEpoch((n) => n + 1)
+    setNav('home')
+  }
+
+  const newCommercial = (): void => {
+    // A brand-new commercial does NOT overwrite the current one and does not
+    // reuse its id — HomeWorkspace starts blank and only persists once the
+    // owner writes something or imports material.
+    setCurrentId(null)
+    setHomeEpoch((n) => n + 1)
+    setNav('home')
+  }
 
   return (
     <div className={styles.app}>
@@ -27,14 +76,20 @@ export function App(): JSX.Element {
       <div className={styles.body}>
         <Sidebar active={nav} onNavigate={setNav} />
         <main className={styles.main}>
-          {nav === 'home' && <HomeWorkspace />}
-          {nav === 'myCommercials' && (
-            <Placeholder
-              icon="folder"
-              title={copy.nav.myCommercials}
-              body="Aquí aparecerán los comerciales que crees. Empieza uno nuevo desde Inicio."
-            />
-          )}
+          {nav === 'home' &&
+            (restored ? (
+              <HomeWorkspace
+                key={`home-${homeEpoch}`}
+                initialProjectId={currentId}
+                onProjectChanged={(id) => setCurrentId(id)}
+                onNewCommercial={newCommercial}
+              />
+            ) : (
+              <div className={styles.placeholder} data-testid="restoring">
+                <span className={styles.placeholderBody}>Cargando…</span>
+              </div>
+            ))}
+          {nav === 'myCommercials' && <MyCommercials onOpen={openCommercial} />}
           {nav === 'material' && (
             <Placeholder
               icon="image"

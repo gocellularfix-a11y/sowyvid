@@ -55,6 +55,13 @@ export interface RenderStatusResult {
   defaultPreset: ExportPresetId
 }
 
+/** Outcome of deleting a whole commercial. */
+export interface DeleteCommercialResult {
+  deleted: boolean
+  /** Exported files removed from disk (only when explicitly requested). */
+  exportedFilesDeleted: number
+}
+
 /** Outcome of open-file / open-folder. */
 export interface OpenExportResult {
   opened: boolean
@@ -75,6 +82,17 @@ export interface SowyvidBridge {
     get(id: string): Promise<Result<Project | null>>
     save(project: Project): Promise<Result<Project>>
     delete(id: string): Promise<Result<boolean>>
+    /** Duplicate a commercial: new id, copied managed material, no exports. */
+    duplicate(input: { projectId: string }): Promise<Result<Project>>
+    /**
+     * Delete a whole commercial: project row, history and managed material.
+     * Exported MP4s outside managed storage are deleted ONLY with the explicit
+     * flag — never as a side effect.
+     */
+    deleteCommercial(input: {
+      projectId: string
+      deleteExportedFiles?: boolean
+    }): Promise<Result<DeleteCommercialResult>>
   }
   media: {
     /**
@@ -84,13 +102,26 @@ export interface SowyvidBridge {
      */
     import(input: { projectId: string; paths?: string[] }): Promise<Result<MediaImportResult>>
     /**
-     * Remove a managed media asset. Blocked (not removed) when the asset is still
-     * referenced, unless `force` is set. Returns where it is used.
+     * Remove an UNREFERENCED managed media asset. When the asset is still used
+     * by the commercial this does not remove anything — it reports `blocked`
+     * with the references so the UI can offer replace / confirmed removal.
+     * There is deliberately no force flag on this surface.
      */
-    remove(input: {
+    remove(input: { projectId: string; mediaId: string }): Promise<Result<MediaRemoveResult>>
+    /**
+     * Replace a referenced asset with a newly picked file: import the new one,
+     * point every reference at it, drop the old managed file. Main-owned.
+     */
+    replace(input: { projectId: string; mediaId: string }): Promise<Result<MediaImportResult>>
+    /**
+     * Owner-confirmed removal of a REFERENCED asset. Main clears references
+     * (music selection, narration, logo, source audio), deletes the managed
+     * file + derivatives and persists a still-valid project. Exported MP4s are
+     * never touched.
+     */
+    removeReferenced(input: {
       projectId: string
       mediaId: string
-      force?: boolean
     }): Promise<Result<MediaRemoveResult>>
   }
   render: {
@@ -103,6 +134,8 @@ export interface SowyvidBridge {
     cancel(input: { jobId: string }): Promise<Result<boolean>>
     status(input: { projectId: string }): Promise<Result<RenderStatusResult>>
     listHistory(input: { projectId: string }): Promise<Result<ExportRecordWithFileState[]>>
+    /** Every export across ALL commercials — powers the "Mis comerciales" library. */
+    listHistoryAll(): Promise<Result<ExportRecordWithFileState[]>>
     /** Re-run a past export with its preset, into its folder (numbered name). */
     retry(input: { exportId: string }): Promise<Result<RenderStartResult>>
     openFile(input: { exportId: string }): Promise<Result<OpenExportResult>>

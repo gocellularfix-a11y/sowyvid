@@ -84,6 +84,22 @@ function createMockBridge(): SowyvidBridge {
         return Promise.resolve(ok(next))
       },
       delete: (id) => Promise.resolve(ok(store.delete(id))),
+      duplicate: ({ projectId }) => {
+        const source = store.get(projectId)
+        if (!source) return Promise.resolve(err('NOT_FOUND', 'Proyecto no encontrado'))
+        const ts = new Date().toISOString()
+        const copy = Project.parse({
+          ...source,
+          id: `proj_${nanoid(10)}`,
+          name: `Copia de ${source.name}`.slice(0, 120),
+          createdAt: ts,
+          updatedAt: ts,
+        })
+        store.set(copy.id, copy)
+        return Promise.resolve(ok(copy))
+      },
+      deleteCommercial: ({ projectId }) =>
+        Promise.resolve(ok({ deleted: store.delete(projectId), exportedFilesDeleted: 0 })),
     },
     media: {
       import: () =>
@@ -91,6 +107,8 @@ function createMockBridge(): SowyvidBridge {
           err('UNSUPPORTED', 'La importación de archivos solo está disponible en la app de escritorio.'),
         ),
       remove: () => Promise.resolve(err('UNSUPPORTED', 'No disponible en vista previa.')),
+      replace: () => Promise.resolve(err('UNSUPPORTED', 'No disponible en vista previa.')),
+      removeReferenced: () => Promise.resolve(err('UNSUPPORTED', 'No disponible en vista previa.')),
     },
     render: {
       // Exporting needs the desktop app (real render engine, real filesystem).
@@ -118,6 +136,7 @@ function createMockBridge(): SowyvidBridge {
         )
       },
       listHistory: () => Promise.resolve(ok([])),
+      listHistoryAll: () => Promise.resolve(ok([])),
       retry: () =>
         Promise.resolve(err('UNSUPPORTED', 'Descargar video solo está disponible en la app de escritorio.')),
       openFile: () =>

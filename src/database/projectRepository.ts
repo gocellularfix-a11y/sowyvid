@@ -319,6 +319,27 @@ export class ProjectRepository {
     return rows.map(exportFromRow)
   }
 
+  /** Every export attempt across all commercials, newest first. */
+  listAllExports(): ExportRecord[] {
+    const rows = this.db.all<ExportRow>(
+      `SELECT ${EXPORT_COLUMNS} FROM export_history ORDER BY created_at DESC`,
+    )
+    return rows.map(exportFromRow)
+  }
+
+  /**
+   * Delete a commercial and everything the database knows about it: versions
+   * and export history included (sql.js does not enforce FK cascades, so the
+   * rows are removed explicitly). Files on disk are the caller's concern.
+   */
+  deleteCommercial(projectId: string): boolean {
+    const existed = this.db.get('SELECT id FROM projects WHERE id = ?', [projectId])
+    this.db.run('DELETE FROM export_history WHERE project_id = ?', [projectId])
+    this.db.run('DELETE FROM project_versions WHERE project_id = ?', [projectId])
+    this.db.run('DELETE FROM projects WHERE id = ?', [projectId])
+    return Boolean(existed)
+  }
+
   /**
    * Startup repair: any row still 'rendering' means the app died mid-render.
    * Mark it failed/interrupted so history never shows a phantom active job —

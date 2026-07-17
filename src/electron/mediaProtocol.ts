@@ -1,6 +1,7 @@
 import { protocol } from 'electron'
 import { createReadStream } from 'node:fs'
 import { stat } from 'node:fs/promises'
+import { join } from 'node:path'
 import { Readable } from 'node:stream'
 import { projectDir } from './paths'
 import {
@@ -49,6 +50,29 @@ export function registerMediaProtocol(repo: ProjectRepository): void {
     try {
       const url = new URL(request.url)
       const parts = url.pathname.split('/').filter(Boolean)
+
+      // sowyvid-media://export-poster/<projectId>/<exportId> — the generated
+      // still for an exported video. Resolved ONLY through the export record
+      // (never a client-supplied path); missing poster is a plain 404.
+      if (url.host === 'export-poster') {
+        const [projectId, exportId] = parts
+        if (!projectId || !PROJECT_ID.test(projectId)) return notFound()
+        if (!exportId || !/^exp_[A-Za-z0-9_-]+$/.test(exportId)) return notFound()
+        const record = repo.getExport(exportId)
+        if (!record || record.projectId !== projectId) return notFound()
+        const posterPath = join(projectDir(projectId), 'renders', `${exportId}.jpg`)
+        const info = await stat(posterPath).catch(() => null)
+        if (!info || !info.isFile()) return notFound()
+        return new Response(bodyFor(posterPath), {
+          status: 200,
+          headers: {
+            'Content-Type': 'image/jpeg',
+            'Content-Length': String(info.size),
+            'Cache-Control': 'no-store',
+          },
+        })
+      }
+
       const projectId = parts[0]
       const mediaId = parts[1]
       const variant = (parts[2] ?? 'original') as MediaVariant

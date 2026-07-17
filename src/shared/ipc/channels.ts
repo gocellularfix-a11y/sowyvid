@@ -18,6 +18,9 @@ export const IPC = {
   ProjectDelete: 'project:delete',
   ProjectListVersions: 'project:listVersions',
   ProjectRestoreVersion: 'project:restoreVersion',
+  ProjectDuplicate: 'project:duplicate',
+  /** Full commercial deletion (project + managed material; exports optional). */
+  ProjectDeleteCommercial: 'project:deleteCommercial',
 
   // Creative engine (deterministic-creative-engine v2)
   EngineFamilies: 'engine:families',
@@ -28,12 +31,17 @@ export const IPC = {
   MediaImport: 'media:import',
   MediaList: 'media:list',
   MediaRemove: 'media:remove',
+  /** Replace a referenced asset with a newly picked file, updating references. */
+  MediaReplace: 'media:replace',
+  /** Owner-confirmed removal of a REFERENCED asset (main owns the cascade). */
+  MediaRemoveReferenced: 'media:removeReferenced',
 
   // Rendering (owner MP4 export)
   RenderStart: 'render:start',
   RenderCancel: 'render:cancel',
   RenderStatus: 'render:status',
   RenderListHistory: 'render:listHistory',
+  RenderListHistoryAll: 'render:listHistoryAll',
   RenderRetry: 'render:retry',
   RenderOpenFile: 'render:openFile',
   RenderOpenFolder: 'render:openFolder',
