@@ -1,17 +1,21 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { Icon } from '../../ui/Icon'
 import { Button } from '../../ui/Button'
 import { TextArea } from '../../ui/TextInput'
 import { StepBadge } from '../../ui/Primitives'
 import { MediaThumb, type ThumbKind } from '../../ui/MediaThumb'
+import { Modal } from '../../ui/Modal'
 import { useToast } from '../../ui/toastContext'
 import { getBridge, isBrowserPreview } from '../../bridge'
 import { tileImageUrl } from '../../mediaUrl'
 import { PreviewPlayer } from './PreviewPlayer'
 import { ExportPanel } from './ExportPanel'
 import type { MediaAsset } from '@shared/domain/media'
+import type { AudioConfig } from '@shared/domain/project'
+import type { MediaReference } from '@features/media/mediaReferences'
 import type { VisualPlan } from '@features/visual/visualPlan'
 import type { AudioPlan } from '@features/audio/audioPlan'
+import { mediaTileLabel, videosWithAudio } from '@features/media/mediaLabel'
 import { copy } from '../../content/copy'
 import styles from './HomeWorkspace.module.css'
 
@@ -37,7 +41,30 @@ interface CommercialResult {
   durationSec: number
 }
 
-export function HomeWorkspace(): JSX.Element {
+interface RemoveDialogState {
+  mediaId: string
+  name: string
+  references: MediaReference[]
+  busy: boolean
+}
+
+export interface HomeWorkspaceProps {
+  /**
+   * The commercial to load on mount (App owns WHICH commercial is current —
+   * startup restore, library "Abrir" and "Nuevo comercial" all live there).
+   * Null starts a clean slate; no project row is created until the owner acts.
+   */
+  initialProjectId: string | null
+  /** Fired when this workspace creates/loads a project, so App can track it. */
+  onProjectChanged: (id: string | null, name: string | null) => void
+  onNewCommercial: () => void
+}
+
+export function HomeWorkspace({
+  initialProjectId,
+  onProjectChanged,
+  onNewCommercial,
+}: HomeWorkspaceProps): JSX.Element {
   const toast = useToast()
   const [description, setDescription] = useState('')
   const [styleId, setStyleId] = useState<string>(copy.step3.styles[0].id)
@@ -46,10 +73,14 @@ export function HomeWorkspace(): JSX.Element {
   const [visualPlan, setVisualPlan] = useState<VisualPlan | null>(null)
   const [audioPlan, setAudioPlan] = useState<AudioPlan | null>(null)
   const [projectId, setProjectId] = useState<string | null>(null)
+  const [projectName, setProjectName] = useState<string | null>(null)
   const [media, setMedia] = useState<MediaAsset[]>([])
+  const [audioCfg, setAudioCfg] = useState<AudioConfig | null>(null)
   const [importing, setImporting] = useState(false)
+  const [removeDialog, setRemoveDialog] = useState<RemoveDialogState | null>(null)
 
-  const [musicId, setMusicId] = useState<string | null>(null)
+  const musicVolumeTimer = useRef<number | null>(null)
+  const sourceVolumeTimer = useRef<number | null>(null)
 
   const canGenerate = description.trim().length > 0
 
@@ -57,15 +88,15 @@ export function HomeWorkspace(): JSX.Element {
 
   /**
    * Recompile the persisted concept so the preview (and the export gate) see
-   * the CURRENT media and music. Without this, music imported or selected after
-   * generating never reached the plans on screen — the export used fresh plans
-   * and sounded different from the preview.
+   * the CURRENT persisted state — media, music, volumes, source audio. This is
+   * the §8 rule: persist first, then rebuild from persisted project state, so
+   * preview and export can never disagree.
    */
   const refreshPlans = async (id: string): Promise<void> => {
     const bridge = getBridge()
     const current = await bridge.projects.get(id)
     if (!current.ok || !current.value?.creative) return
-    setMusicId(current.value.audio.musicId)
+    setAudioCfg(current.value.audio)
     const compiled = await bridge.engine.compile({
       projectId: id,
       conceptId: current.value.creative.conceptId,
@@ -81,60 +112,97 @@ export function HomeWorkspace(): JSX.Element {
   }
 
   /**
-   * Restore the owner's work on startup. Jorge exported a commercial, closed
-   * the app, reopened it — and saw a blank step 4 with no history, because all
-   * of this state lived only in React. The most recent project (the repository
-   * lists by last update) is the owner's current work: restore its id, media,
-   * brief and — when a concept was compiled — its plans, so the preview, the
-   * export button and the export HISTORY are all visible again.
+   * Load the commercial App told us to show. App decides WHEN restoring is
+   * appropriate (startup → most recent; library → the chosen one; new → none),
+   * so this component never guesses.
    */
   useEffect(() => {
-    if (isBrowserPreview) return
+    if (isBrowserPreview || !initialProjectId) return
     let cancelled = false
     void (async () => {
-      const projects = await getBridge().projects.list()
-      if (cancelled || !projects.ok || projects.value.length === 0) return
-      const latest = projects.value[0]!
-      setProjectId(latest.id)
-      setMedia(latest.media)
-      setMusicId(latest.audio.musicId)
-      if (latest.brief.productOrService) setDescription(latest.brief.productOrService)
-      if (latest.creative) await refreshPlans(latest.id)
+      const current = await getBridge().projects.get(initialProjectId)
+      if (cancelled || !current.ok || !current.value) return
+      const project = current.value
+      setProjectId(project.id)
+      setProjectName(project.name)
+      setMedia(project.media)
+      setAudioCfg(project.audio)
+      if (project.brief.productOrService) setDescription(project.brief.productOrService)
+      if (project.creative) await refreshPlans(project.id)
     })()
     return () => {
       cancelled = true
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- mount-only: App remounts this component (key) when the commercial changes
   }, [])
 
-  /** The owner picks (or removes) the commercial's music. Persisted, then replanned. */
-  const onSelectMusic = async (nextId: string | null): Promise<void> => {
+  /** Persist an audio-config change, then rebuild plans from persisted state. */
+  const persistAudio = async (patch: Partial<AudioConfig>): Promise<void> => {
     if (!projectId) return
     const bridge = getBridge()
     const current = await bridge.projects.get(projectId)
     if (!current.ok || !current.value) return
     const saved = await bridge.projects.save({
       ...current.value,
-      audio: { ...current.value.audio, musicId: nextId },
+      audio: { ...current.value.audio, ...patch },
     })
     if (!saved.ok) {
-      toast.show('No pudimos cambiar la música.', 'error')
+      toast.show('No pudimos guardar el ajuste de sonido.', 'error')
       return
     }
-    setMusicId(nextId)
+    setAudioCfg(saved.value.audio)
     if (current.value.creative) await refreshPlans(projectId)
+  }
+
+  /** The owner picks (or removes) the commercial's music. Persisted, then replanned. */
+  const onSelectMusic = async (nextId: string | null): Promise<void> => {
+    await persistAudio({ musicId: nextId })
+  }
+
+  /** Sliders update optimistically and persist shortly after the last movement. */
+  const onMusicVolume = (value: number): void => {
+    setAudioCfg((c) => (c ? { ...c, musicVolume: value } : c))
+    if (musicVolumeTimer.current) window.clearTimeout(musicVolumeTimer.current)
+    musicVolumeTimer.current = window.setTimeout(() => void persistAudio({ musicVolume: value }), 400)
+  }
+  const onSourceAudioVolume = (value: number): void => {
+    setAudioCfg((c) => (c ? { ...c, sourceAudioVolume: value } : c))
+    if (sourceVolumeTimer.current) window.clearTimeout(sourceVolumeTimer.current)
+    sourceVolumeTimer.current = window.setTimeout(
+      () => void persistAudio({ sourceAudioVolume: value }),
+      400,
+    )
   }
 
   /** Ensure a draft project exists to attach media/brief to; returns its id. */
   const ensureProject = async (): Promise<string> => {
     if (projectId) return projectId
+    const name = description.trim().slice(0, 60) || 'Comercial'
     const created = await getBridge().projects.create({
-      name: description.trim().slice(0, 60) || 'Comercial',
+      name,
       brief: { productOrService: description.trim() },
     })
     if (!created.ok) throw new Error(created.error.message)
     setProjectId(created.value.id)
+    setProjectName(created.value.name)
     setMedia(created.value.media)
+    setAudioCfg(created.value.audio)
+    onProjectChanged(created.value.id, created.value.name)
     return created.value.id
+  }
+
+  /** Apply a project returned by a media operation to every dependent state. */
+  const applyProject = async (project: {
+    id: string
+    name: string
+    media: MediaAsset[]
+    audio: AudioConfig
+    creative: unknown
+  }): Promise<void> => {
+    setMedia(project.media)
+    setAudioCfg(project.audio)
+    setProjectName(project.name)
+    if (project.creative) await refreshPlans(project.id)
   }
 
   /** Import local files through MediaVault (Electron only). */
@@ -152,11 +220,7 @@ export function HomeWorkspace(): JSX.Element {
         return
       }
       if (res.value.canceled) return
-      setMedia(res.value.project.media)
-      setMusicId(res.value.project.audio.musicId)
-      // New material (including auto-selected music) must reach the plans the
-      // preview and the export gate actually use.
-      if (res.value.project.creative) await refreshPlans(id)
+      await applyProject(res.value.project)
 
       const outcomes = res.value.outcomes
       const count = (s: string) => outcomes.filter((o) => o.status === s).length
@@ -181,18 +245,52 @@ export function HomeWorkspace(): JSX.Element {
     }
   }
 
-  const onRemoveMedia = async (mediaId: string): Promise<void> => {
+  const onRemoveMedia = async (asset: MediaAsset): Promise<void> => {
     if (!projectId) return
-    const res = await getBridge().media.remove({ projectId, mediaId })
+    const res = await getBridge().media.remove({ projectId, mediaId: asset.id })
     if (!res.ok) return
     if (res.value.blocked) {
-      const where = res.value.references.map((r) => r.label).join(', ')
-      toast.show(`No se puede quitar: se usa en ${where}.`, 'info')
+      // Referenced media is a DECISION, not a dead end: replace it, remove it
+      // for real, or keep it. The main process owns whichever cascade follows.
+      setRemoveDialog({
+        mediaId: asset.id,
+        name: asset.originalName,
+        references: res.value.references,
+        busy: false,
+      })
       return
     }
-    setMedia(res.value.project.media)
-    setMusicId(res.value.project.audio.musicId)
-    if (res.value.project.creative) await refreshPlans(projectId)
+    await applyProject(res.value.project)
+  }
+
+  const onReplaceMedia = async (): Promise<void> => {
+    if (!projectId || !removeDialog) return
+    setRemoveDialog({ ...removeDialog, busy: true })
+    const res = await getBridge().media.replace({ projectId, mediaId: removeDialog.mediaId })
+    setRemoveDialog(null)
+    if (!res.ok) {
+      toast.show('No pudimos reemplazar el archivo.', 'error')
+      return
+    }
+    if (res.value.canceled) return
+    await applyProject(res.value.project)
+    toast.show('Archivo reemplazado en tu comercial.', 'success')
+  }
+
+  const onRemoveReferenced = async (): Promise<void> => {
+    if (!projectId || !removeDialog) return
+    setRemoveDialog({ ...removeDialog, busy: true })
+    const res = await getBridge().media.removeReferenced({
+      projectId,
+      mediaId: removeDialog.mediaId,
+    })
+    setRemoveDialog(null)
+    if (!res.ok) {
+      toast.show('No pudimos quitar el archivo.', 'error')
+      return
+    }
+    await applyProject(res.value.project)
+    toast.show('Archivo quitado del comercial.', 'success')
   }
 
   /**
@@ -242,8 +340,31 @@ export function HomeWorkspace(): JSX.Element {
     }
   }
 
+  const musicCandidates = media.filter((m) => m.kind === 'audio' && m.valid)
+  const soundVideos = videosWithAudio(media)
+  const hasVideos = media.some((m) => m.kind === 'video')
+  const musicId = audioCfg?.musicId ?? null
+
   return (
     <section className={styles.workspace} aria-label="Crear comercial">
+      <div className={styles.currentBar} data-testid="current-commercial">
+        <span className={styles.currentName}>
+          {copy.home.currentLabel}{' '}
+          <strong data-testid="current-commercial-name">
+            {projectName ?? copy.home.unnamed}
+          </strong>
+        </span>
+        <Button
+          variant="secondary"
+          size="sm"
+          leftIcon="plus"
+          onClick={onNewCommercial}
+          data-testid="new-commercial"
+        >
+          {copy.home.newCommercial}
+        </Button>
+      </div>
+
       <div className={styles.columns}>
         {/* ---------- Step 1 ---------- */}
         <div className={styles.col}>
@@ -299,15 +420,17 @@ export function HomeWorkspace(): JSX.Element {
                         <Icon name={KIND_ICON[asset.kind]} size={18} />
                       )}
                     </span>
-                    <span className={styles.mediaName}>
-                      {asset.originalName}
-                      {!asset.valid && <span className={styles.mediaMissing}> · no disponible</span>}
+                    <span className={styles.mediaMeta}>
+                      <span className={styles.mediaName}>{asset.originalName}</span>
+                      <span className={styles.mediaBadge} data-testid={`media-badge-${asset.id}`}>
+                        {mediaTileLabel(asset)}
+                      </span>
                     </span>
                     <button
                       type="button"
                       className={styles.mediaRemove}
                       aria-label={`Quitar ${asset.originalName}`}
-                      onClick={() => void onRemoveMedia(asset.id)}
+                      onClick={() => void onRemoveMedia(asset)}
                     >
                       <Icon name="x" size={14} />
                     </button>
@@ -424,25 +547,90 @@ export function HomeWorkspace(): JSX.Element {
                   Comercial creado: {result.scenes} escenas · {result.durationSec}s
                 </p>
               )}
-              {media.some((m) => m.kind === 'audio') ? (
-                <label className={styles.musicSelect} data-testid="music-select-label">
-                  <span>Música del comercial</span>
-                  <select
-                    value={musicId ?? ''}
-                    onChange={(e) => void onSelectMusic(e.target.value || null)}
-                    data-testid="music-select"
-                  >
-                    <option value="">Sin música</option>
-                    {media
-                      .filter((m) => m.kind === 'audio' && m.valid)
-                      .map((m) => (
-                        <option key={m.id} value={m.id}>
-                          {m.originalName}
-                        </option>
-                      ))}
-                  </select>
-                </label>
-              ) : null}
+
+              {/* ---------- The commercial's SOUND (persisted, drives export) ---------- */}
+              <div className={styles.audioSection} data-testid="audio-section">
+                <p className={styles.audioSectionTitle}>{copy.audio.title}</p>
+
+                {musicCandidates.length > 0 ? (
+                  <>
+                    <label className={styles.musicSelect} data-testid="music-select-label">
+                      <span>{copy.audio.musicLabel}</span>
+                      <select
+                        value={musicId ?? ''}
+                        onChange={(e) => void onSelectMusic(e.target.value || null)}
+                        data-testid="music-select"
+                      >
+                        <option value="">{copy.audio.noMusic}</option>
+                        {musicCandidates.map((m) => (
+                          <option key={m.id} value={m.id}>
+                            {m.originalName}
+                          </option>
+                        ))}
+                      </select>
+                    </label>
+                    <label className={styles.audioControl}>
+                      <span>{copy.audio.musicVolume}</span>
+                      <input
+                        type="range"
+                        min={0}
+                        max={1}
+                        step={0.05}
+                        value={audioCfg?.musicVolume ?? 0.8}
+                        onChange={(e) => onMusicVolume(Number(e.target.value))}
+                        disabled={!musicId}
+                        data-testid="music-volume"
+                        aria-label={copy.audio.musicVolume}
+                      />
+                    </label>
+                  </>
+                ) : (
+                  <p className={styles.audioNote} data-testid="no-music-note">
+                    {copy.audio.noMusicImported}
+                  </p>
+                )}
+
+                {soundVideos.length > 0 ? (
+                  <div className={styles.sourceAudioBlock} data-testid="source-audio-section">
+                    <p className={styles.audioSectionSub}>{copy.audio.sourceAudioTitle}</p>
+                    <label className={styles.audioToggle}>
+                      <input
+                        type="checkbox"
+                        checked={audioCfg?.useSourceAudio ?? false}
+                        onChange={(e) => void persistAudio({ useSourceAudio: e.target.checked })}
+                        data-testid="source-audio-toggle"
+                      />
+                      <span>{copy.audio.sourceAudioEnable}</span>
+                    </label>
+                    <label className={styles.audioControl}>
+                      <span>{copy.audio.sourceAudioVolume}</span>
+                      <input
+                        type="range"
+                        min={0}
+                        max={1}
+                        step={0.05}
+                        value={audioCfg?.sourceAudioVolume ?? 1}
+                        onChange={(e) => onSourceAudioVolume(Number(e.target.value))}
+                        disabled={!(audioCfg?.useSourceAudio ?? false)}
+                        data-testid="source-audio-volume"
+                        aria-label={copy.audio.sourceAudioVolume}
+                      />
+                    </label>
+                    <p className={styles.audioNote}>{copy.audio.sourceAudioHint}</p>
+                  </div>
+                ) : hasVideos ? (
+                  <p className={styles.audioNote} data-testid="video-no-sound">
+                    {copy.audio.videoNoSound}
+                  </p>
+                ) : null}
+
+                {audioPlan?.silent ? (
+                  <p className={styles.silentWarning} role="status" data-testid="silent-warning">
+                    ⚠ {copy.audio.silentWarning}
+                  </p>
+                ) : null}
+              </div>
+
               <div className={styles.resultActions}>
                 {projectId ? <ExportPanel projectId={projectId} /> : null}
                 <Button variant="secondary" block leftIcon="refresh" onClick={generate}>
@@ -455,6 +643,50 @@ export function HomeWorkspace(): JSX.Element {
       </div>
 
       <TrustBar />
+
+      {/* ---------- Referenced-media decision dialog ---------- */}
+      <Modal
+        open={removeDialog !== null}
+        title={copy.mediaRemove.title}
+        testId="media-remove-dialog"
+      >
+        {removeDialog ? (
+          <>
+            <p className={styles.dialogBody}>
+              <strong>{removeDialog.name}</strong> se usa en{' '}
+              {removeDialog.references.map((r) => r.label).join(', ')}.
+            </p>
+            <div className={styles.dialogActions}>
+              <Button
+                block
+                variant="secondary"
+                disabled={removeDialog.busy}
+                onClick={() => void onReplaceMedia()}
+                data-testid="media-replace"
+              >
+                {copy.mediaRemove.replace}
+              </Button>
+              <Button
+                block
+                variant="secondary"
+                disabled={removeDialog.busy}
+                onClick={() => void onRemoveReferenced()}
+                data-testid="media-remove-confirm"
+              >
+                {copy.mediaRemove.removeAndDelete}
+              </Button>
+              <Button
+                block
+                disabled={removeDialog.busy}
+                onClick={() => setRemoveDialog(null)}
+                data-testid="media-remove-cancel"
+              >
+                {copy.mediaRemove.cancel}
+              </Button>
+            </div>
+          </>
+        ) : null}
+      </Modal>
     </section>
   )
 }
