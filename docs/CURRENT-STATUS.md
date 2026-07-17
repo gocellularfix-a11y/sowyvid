@@ -43,6 +43,7 @@ Honest, per-feature state. Legend:
 | D+ | **Manual Suno music brief** | 🟡 | Provider contract + registry + deterministic brief (Northstar intent + FrameLogic energy + SoundWeave duration) implemented and tested. **No UI** — no copy button, no "Abrir Suno". `SunoProvider` has no `generateTrack` at all; no unofficial APIs (`docs/SUNO-MANUAL-WORKFLOW.md`) |
 | E | **Owner MP4 export ("Descargar video")** | ✅ | The button drives the production engine: typed ids-only IPC, job registry (one render per project, monotone progress, Spanish stages, safe cancel), native save dialog + presets, sanitized never-silently-overwritten filenames, restart-safe export history with stable failure codes. Proven by clicking the real button in real Electron — real MP4, RMS-audible, history survives restart (`docs/MP4-EXPORT.md`) |
 | F | **Windows packaged validation** | ✅ | The packaged `SowyVid.exe` (win-unpacked) exported a real 1080×1920 MP4 — h264+aac, **−26.9 dBFS**, frames validated — **from a planted stale cache**, using the shipped prebuilt render bundle, shipped browser, unpacked compositor and asar-fixed ffmpeg/ffprobe. NSIS installer NOT validated (`docs/WINDOWS-PACKAGED-VALIDATION.md`) |
+| F+ | **Owner hotfix: audible exports + visible history** | ✅ | Jorge's packaged exports were **silent (no audio stream)** because imported music was never selected, and his history was invisible after restart because no UI state was restored. Fixed: imported music auto-selects (owner-visible selector to change/remove; reference-guarded removal), and the most recent project — media, plans, export panel, history — restores on startup. Packaged suite now drives ONLY the owner's buttons |
 
 ## Engine vault (Jorge Engine Vault v1.0.0)
 
@@ -91,10 +92,10 @@ independently re-run here — they will be validated as each is integrated.
 - **The NSIS installer is unvalidated** — packaged validation ran against the
   unpacked (`--dir`) build. No installed-from-setup.exe run has been performed.
   Binaries are unsigned.
-- **No music library UI and no metadata form** — `audio.musicId` and `audioMeta`
-  are honored by the engine (and by the export), but the interface has no way to
-  choose/preview/replace a track or fill in metadata. Tests set `musicId` via the
-  bridge; an owner cannot yet.
+- **Music selection is minimal, not a library.** Imported music is auto-selected
+  as the commercial's music and a "Música del comercial" selector lets the owner
+  change or remove it — that fixed the silent packaged exports. There is still no
+  in-app track preview, no `audioMeta` form, and no Suno-brief UI.
 - **Human hearing confirmation is Jorge's gate** — automation measures RMS and
   validates decode; it does not listen through speakers.
 - **No music library UI yet** — the AudioPlan resolves `audio.musicId`, but choosing /

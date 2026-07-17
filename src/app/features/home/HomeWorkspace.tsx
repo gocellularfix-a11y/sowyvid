@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { Icon } from '../../ui/Icon'
 import { Button } from '../../ui/Button'
 import { TextArea } from '../../ui/TextInput'
@@ -49,9 +49,80 @@ export function HomeWorkspace(): JSX.Element {
   const [media, setMedia] = useState<MediaAsset[]>([])
   const [importing, setImporting] = useState(false)
 
+  const [musicId, setMusicId] = useState<string | null>(null)
+
   const canGenerate = description.trim().length > 0
 
   const soon = () => toast.show(copy.common.unavailableHint, 'info')
+
+  /**
+   * Recompile the persisted concept so the preview (and the export gate) see
+   * the CURRENT media and music. Without this, music imported or selected after
+   * generating never reached the plans on screen — the export used fresh plans
+   * and sounded different from the preview.
+   */
+  const refreshPlans = async (id: string): Promise<void> => {
+    const bridge = getBridge()
+    const current = await bridge.projects.get(id)
+    if (!current.ok || !current.value?.creative) return
+    setMusicId(current.value.audio.musicId)
+    const compiled = await bridge.engine.compile({
+      projectId: id,
+      conceptId: current.value.creative.conceptId,
+    })
+    if (!compiled.ok) return
+    setResult({
+      scenes: compiled.value.renderPlan.scenes.length,
+      durationSec: Math.round(compiled.value.renderPlan.durationSec),
+    })
+    setVisualPlan(compiled.value.visualPlan)
+    setAudioPlan(compiled.value.audioPlan)
+    setGen('ready')
+  }
+
+  /**
+   * Restore the owner's work on startup. Jorge exported a commercial, closed
+   * the app, reopened it — and saw a blank step 4 with no history, because all
+   * of this state lived only in React. The most recent project (the repository
+   * lists by last update) is the owner's current work: restore its id, media,
+   * brief and — when a concept was compiled — its plans, so the preview, the
+   * export button and the export HISTORY are all visible again.
+   */
+  useEffect(() => {
+    if (isBrowserPreview) return
+    let cancelled = false
+    void (async () => {
+      const projects = await getBridge().projects.list()
+      if (cancelled || !projects.ok || projects.value.length === 0) return
+      const latest = projects.value[0]!
+      setProjectId(latest.id)
+      setMedia(latest.media)
+      setMusicId(latest.audio.musicId)
+      if (latest.brief.productOrService) setDescription(latest.brief.productOrService)
+      if (latest.creative) await refreshPlans(latest.id)
+    })()
+    return () => {
+      cancelled = true
+    }
+  }, [])
+
+  /** The owner picks (or removes) the commercial's music. Persisted, then replanned. */
+  const onSelectMusic = async (nextId: string | null): Promise<void> => {
+    if (!projectId) return
+    const bridge = getBridge()
+    const current = await bridge.projects.get(projectId)
+    if (!current.ok || !current.value) return
+    const saved = await bridge.projects.save({
+      ...current.value,
+      audio: { ...current.value.audio, musicId: nextId },
+    })
+    if (!saved.ok) {
+      toast.show('No pudimos cambiar la música.', 'error')
+      return
+    }
+    setMusicId(nextId)
+    if (current.value.creative) await refreshPlans(projectId)
+  }
 
   /** Ensure a draft project exists to attach media/brief to; returns its id. */
   const ensureProject = async (): Promise<string> => {
@@ -82,6 +153,10 @@ export function HomeWorkspace(): JSX.Element {
       }
       if (res.value.canceled) return
       setMedia(res.value.project.media)
+      setMusicId(res.value.project.audio.musicId)
+      // New material (including auto-selected music) must reach the plans the
+      // preview and the export gate actually use.
+      if (res.value.project.creative) await refreshPlans(id)
 
       const outcomes = res.value.outcomes
       const count = (s: string) => outcomes.filter((o) => o.status === s).length
@@ -116,6 +191,8 @@ export function HomeWorkspace(): JSX.Element {
       return
     }
     setMedia(res.value.project.media)
+    setMusicId(res.value.project.audio.musicId)
+    if (res.value.project.creative) await refreshPlans(projectId)
   }
 
   /**
@@ -347,6 +424,25 @@ export function HomeWorkspace(): JSX.Element {
                   Comercial creado: {result.scenes} escenas · {result.durationSec}s
                 </p>
               )}
+              {media.some((m) => m.kind === 'audio') ? (
+                <label className={styles.musicSelect} data-testid="music-select-label">
+                  <span>Música del comercial</span>
+                  <select
+                    value={musicId ?? ''}
+                    onChange={(e) => void onSelectMusic(e.target.value || null)}
+                    data-testid="music-select"
+                  >
+                    <option value="">Sin música</option>
+                    {media
+                      .filter((m) => m.kind === 'audio' && m.valid)
+                      .map((m) => (
+                        <option key={m.id} value={m.id}>
+                          {m.originalName}
+                        </option>
+                      ))}
+                  </select>
+                </label>
+              ) : null}
               <div className={styles.resultActions}>
                 {projectId ? <ExportPanel projectId={projectId} /> : null}
                 <Button variant="secondary" block leftIcon="refresh" onClick={generate}>

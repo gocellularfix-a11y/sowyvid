@@ -235,7 +235,7 @@ export function ExportPanel({ projectId }: { projectId: string }): JSX.Element {
             <div key={record.id} className={styles.exportHistoryRow} data-testid="export-history-row">
               <span className={styles.exportHistoryName}>
                 {fileNameOf(record.outputPath)}
-                {record.status === 'completed' && !record.fileExists ? ' (archivo eliminado)' : ''}
+                {record.status === 'completed' && !record.fileExists ? ' — Archivo no encontrado' : ''}
                 {record.status === 'failed' ? ' (falló)' : ''}
                 {record.status === 'canceled' ? ' (cancelada)' : ''}
               </span>

@@ -73,9 +73,9 @@ planted stale cache: 1080×1920, 18.05s, h264+aac, **−26.9 dBFS**
 
 - **The NSIS installer is unvalidated** — packaged validation used the
   win-unpacked build. No installed-from-setup.exe run; binaries unsigned.
-- **No music library UI / metadata form / Suno brief UI** — the engine and the
-  export honor `audio.musicId` and `audioMeta`, but nothing in the interface
-  sets them (tests set them via the bridge).
+- **Music selection is minimal, not a library** — imported music auto-selects and
+  a "Música del comercial" selector changes/removes it (that fixed Jorge's silent
+  packaged exports). No in-app track preview, no `audioMeta` form, no Suno-brief UI.
 - **No narration source** — the AudioPlan supports imported narration; SowyVid has
   no TTS (PromptGate deferred).
 - **Phone upload** (BridgeDrop, "Mi teléfono" unavailable), **AI** (PromptGate).

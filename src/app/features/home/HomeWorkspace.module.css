@@ -342,6 +342,22 @@
 .audioToggle input:disabled + span {
   opacity: 0.4;
 }
+.musicSelect {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  font-size: 12px;
+  color: var(--text-dim, #b9b9c6);
+  flex-shrink: 0;
+}
+.musicSelect select {
+  background: rgba(255, 255, 255, 0.06);
+  color: var(--text, #ececf2);
+  border: 1px solid var(--border-subtle, rgba(255, 255, 255, 0.12));
+  border-radius: var(--radius-md, 8px);
+  padding: 8px 10px;
+  font-size: 13px;
+}
 .exportPanel {
   display: flex;
   flex-direction: column;
