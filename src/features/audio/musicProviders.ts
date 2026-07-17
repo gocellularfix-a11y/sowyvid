@@ -144,6 +144,76 @@ export function buildMusicPrompt(input: MusicPromptInput): MusicPromptResult {
   }
 }
 
+/**
+ * A structured, owner-facing music brief. Every field is DETERMINISTIC from the
+ * commercial's settings, so regenerating after a change yields a consistent
+ * result. The Spanish fields are what the owner reads; `prompt` is the English
+ * text they copy into Suno (generators respond best to English).
+ */
+export interface MusicBriefDetail {
+  /** What the music is for. */
+  purpose: string
+  genre: string
+  mood: string
+  energy: MusicPromptInput['visualEnergy']
+  tempo: string
+  instrumentation: string
+  /** Vocal direction — instrumental by default for a background bed. */
+  vocals: string
+  durationSec: number
+  intro: string
+  ending: string
+  loopFade: string
+  avoid: string
+  /** The copyable English prompt. */
+  prompt: string
+  styleTags: string[]
+  summary: string
+}
+
+const ENERGY_ES: Record<MusicPromptInput['visualEnergy'], string> = {
+  calm: 'tranquila',
+  balanced: 'equilibrada',
+  energetic: 'enérgica',
+}
+const ENERGY_INSTRUMENTS: Record<MusicPromptInput['visualEnergy'], string> = {
+  calm: 'piano suave, pads cálidos, percusión ligera',
+  balanced: 'guitarra o sintetizador brillante, bajo firme, batería estable',
+  energetic: 'sintetizadores potentes, batería marcada, bajo prominente',
+}
+
+/**
+ * Build the full structured brief. Instrumental by default: a background bed
+ * sits under the owner's message and on-screen text. The owner may state they
+ * want vocals, but the deterministic default never adds them.
+ */
+export function buildMusicBriefDetail(
+  input: MusicPromptInput & { wantsVocals?: boolean },
+): MusicBriefDetail {
+  const base = buildMusicPrompt(input)
+  const seconds = Math.max(1, Math.round(input.durationSec))
+  const vocals = input.wantsVocals
+    ? 'Con voz (el dueño lo pidió explícitamente)'
+    : 'Instrumental (sin voz, sin letra)'
+  return {
+    purpose: `Música de fondo para un comercial de ${input.industry} que promociona ${input.productOrService}.`,
+    genre: `Publicitaria / comercial, estilo ${input.mood}`,
+    mood: `${ENERGY_ES[input.visualEnergy]}, ${input.mood}`,
+    energy: input.visualEnergy,
+    tempo: ENERGY_BPM[input.visualEnergy],
+    instrumentation: ENERGY_INSTRUMENTS[input.visualEnergy],
+    vocals,
+    durationSec: seconds,
+    intro: 'Entrada breve y limpia (1–2 s), sin arranque abrupto.',
+    ending: 'Cierre claro y definido; evita cortes secos.',
+    loopFade: 'Estructura que pueda repetirse sin costura; fade suave si hace falta.',
+    avoid: 'Voces o letra, silencios largos, caídas bruscas, medios saturados que tapen la voz.',
+    prompt: base.prompt,
+    styleTags: base.styleTags,
+    summary: base.summary,
+  }
+}
+
 /** Where the owner goes to create the track themselves. */
 export const SUNO_CREATE_URL = 'https://suno.com/create'
 

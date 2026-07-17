@@ -8,6 +8,7 @@ import {
 import type { VisualPlan } from '@features/visual/visualPlan'
 import type { AudioConfig } from '@shared/domain/project'
 import type { MediaAsset } from '@shared/domain/media'
+import { musicUrl } from '@features/music/musicUrl'
 import {
   AudioPlanSchema,
   AUDIO_PLAN_VERSION,
@@ -36,11 +37,25 @@ function mediaUrlById(projectId: string, mediaId: string): string {
   return `sowyvid-media://asset/${projectId}/${mediaId}/original`
 }
 
+/** A resolved global Music Center track — the catalog's answer, not the project's. */
+export interface ResolvedMusicTrack {
+  id: string
+  durationSec: number | null
+  /** False when the managed file is gone; the plan then reports it missing. */
+  valid: boolean
+}
+
 export interface BuildAudioPlanInput {
   projectId: string
   audio: AudioConfig
   visualPlan: VisualPlan
   media: readonly MediaAsset[]
+  /**
+   * Resolve a GLOBAL Music Center track id → its facts. Provided by the main
+   * process (which owns the catalog). Absent (browser preview / legacy tests) →
+   * only the legacy project-scoped `audio.musicId` path is used, unchanged.
+   */
+  resolveMusicTrack?: (trackId: string) => ResolvedMusicTrack | null
 }
 
 /** An asset reference checked against managed storage. */
@@ -124,10 +139,35 @@ export function buildAudioPlan(input: BuildAudioPlanInput): AudioPlan {
   const totalFrames = visualPlan.totalDurationInFrames
   const missingTracks: MissingTrack[] = []
 
-  // --- resolve assets ourselves, so failures are explicit ---
-  const musicRes = audio.musicId ? resolveAudioAsset(media, audio.musicId) : null
-  if (musicRes && !musicRes.ok) {
-    missingTracks.push({ role: 'music', assetId: audio.musicId, reason: musicRes.reason })
+  // --- resolve the commercial's music ---
+  // A GLOBAL Music Center track (audio.musicTrackId) wins over the legacy
+  // project-scoped media reference (audio.musicId); the legacy path stays intact
+  // for pre-Music-Center projects and for browser preview / unit tests where no
+  // catalog resolver is supplied. Either way failures are explicit, so a deleted
+  // or invalid track shows the owner a real warning instead of silence.
+  let musicChoice: { id: string; url: string; durationSec: number | null } | null = null
+  if (audio.musicTrackId) {
+    const track = input.resolveMusicTrack?.(audio.musicTrackId) ?? null
+    if (track && track.valid) {
+      musicChoice = { id: track.id, url: musicUrl(track.id), durationSec: track.durationSec }
+    } else {
+      missingTracks.push({
+        role: 'music',
+        assetId: audio.musicTrackId,
+        reason: track ? 'file-missing' : 'not-found',
+      })
+    }
+  } else if (audio.musicId) {
+    const legacy = resolveAudioAsset(media, audio.musicId)
+    if (legacy.ok) {
+      musicChoice = {
+        id: legacy.asset.id,
+        url: mediaUrlById(projectId, legacy.asset.id),
+        durationSec: legacy.asset.durationSec,
+      }
+    } else {
+      missingTracks.push({ role: 'music', assetId: audio.musicId, reason: legacy.reason })
+    }
   }
 
   // Narration exists only if the owner imported a voice track: SowyVid has no
@@ -140,25 +180,27 @@ export function buildAudioPlan(input: BuildAudioPlanInput): AudioPlan {
   }
 
   const resolved = new Map<string, ResolvedAudioAsset>()
-  const register = (asset: MediaAsset): void => {
-    resolved.set(asset.id, {
-      file: mediaUrlById(projectId, asset.id),
+  const register = (id: string, url: string, durationSec: number | null): void => {
+    resolved.set(id, {
+      file: url,
       kind: 'audio',
       // ffprobe-measured. The engine cannot measure audio itself, so a wrong
       // duration here would produce a wrong (if deterministic) plan.
-      ...(asset.durationSec ? { durationMs: asset.durationSec * 1000 } : {}),
+      ...(durationSec ? { durationMs: durationSec * 1000 } : {}),
     })
   }
-  if (musicRes?.ok) register(musicRes.asset)
-  if (narrationRes?.ok) register(narrationRes.asset)
+  if (musicChoice) register(musicChoice.id, musicChoice.url, musicChoice.durationSec)
+  if (narrationRes?.ok) {
+    register(narrationRes.asset.id, mediaUrlById(projectId, narrationRes.asset.id), narrationRes.asset.durationSec)
+  }
 
   // --- let SoundWeave decide the timing ---
   const engineInput: SoundWeaveInput = {
     audioEnabled: true,
     masterVolume: 1,
     duckMusicUnderVoice: true,
-    ...(musicRes?.ok
-      ? { music: { enabled: true, assetId: musicRes.asset.id, volume: audio.musicVolume, loop: true } }
+    ...(musicChoice
+      ? { music: { enabled: true, assetId: musicChoice.id, volume: audio.musicVolume, loop: true } }
       : {}),
     ...(narrationRes?.ok
       ? {
@@ -217,8 +259,8 @@ export function buildAudioPlan(input: BuildAudioPlanInput): AudioPlan {
   }
 
   const music: AudioTrack | null =
-    mix.music && musicRes?.ok
-      ? toTrack('music', musicRes.asset.id, mix.music.file, {
+    mix.music && musicChoice
+      ? toTrack('music', musicChoice.id, mix.music.file, {
           fromFrame: 0,
           durationFrames: totalFrames,
           volume: mix.music.volume,

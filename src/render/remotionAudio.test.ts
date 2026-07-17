@@ -22,6 +22,7 @@ const VOICE = aud('gc_voice', 'locucion.mp3', { durationSec: 4 })
 function audioCfg(over: Partial<AudioConfig> = {}): AudioConfig {
   return {
     musicId: null,
+    musicTrackId: null,
     narrationEnabled: false,
     narrationMediaId: null,
     useSourceAudio: false,

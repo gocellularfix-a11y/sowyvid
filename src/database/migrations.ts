@@ -84,6 +84,25 @@ export const MIGRATIONS: Migration[] = [
       CREATE INDEX idx_exports_status ON export_history(status);
     `,
   },
+  {
+    version: 4,
+    name: 'music-center-catalog',
+    // The application-level Music Center. A track's bytes live once in the
+    // managed music vault (dedup by hash); commercials reference tracks by id
+    // (project.audio.musicTrackId lives in the project JSON, not here). Purely
+    // additive — existing projects load unchanged and keep their legacy
+    // project-scoped music until migrated.
+    up: `
+      CREATE TABLE music_tracks (
+        id          TEXT PRIMARY KEY,
+        hash        TEXT NOT NULL,
+        created_at  TEXT NOT NULL,
+        updated_at  TEXT NOT NULL,
+        data        TEXT NOT NULL   -- full validated MusicTrack JSON
+      );
+      CREATE INDEX idx_music_hash ON music_tracks(hash);
+    `,
+  },
 ]
 
 /**

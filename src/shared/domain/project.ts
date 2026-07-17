@@ -21,7 +21,15 @@ export const BrandPreferences = z.object({
 export type BrandPreferences = z.infer<typeof BrandPreferences>
 
 export const AudioConfig = z.object({
+  /**
+   * Legacy PROJECT-SCOPED music: a media id inside `project.media`. Kept for
+   * back-compat with pre-Music-Center projects. New selections use
+   * `musicTrackId` (the global catalog). When both are set, the global track
+   * wins — the legacy field is migrated, not trusted over the catalog.
+   */
   musicId: z.string().nullable().default(null),
+  /** Selected GLOBAL Music Center track (`music_<hash>`); null when none. */
+  musicTrackId: z.string().nullable().default(null),
   narrationEnabled: z.boolean().default(false),
   /**
    * Managed audio asset used as narration. SowyVid has no TTS (PromptGate is

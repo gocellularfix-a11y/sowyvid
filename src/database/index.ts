@@ -58,6 +58,7 @@ export async function openPersistentDatabase(dbFilePath: string): Promise<Persis
 }
 
 export { ProjectRepository } from './projectRepository'
+export { MusicRepository, usagesForTrack, trackUsages } from './musicRepository'
 export type { ExportRecord } from '@shared/domain/exportRecord'
 export type { Database, PersistentDatabase } from './port'
 export { runMigrations, currentSchemaVersion, MIGRATIONS } from './migrations'

@@ -80,6 +80,47 @@ function parseFps(rate: string | undefined): number | null {
   return Number((n / d).toFixed(3))
 }
 
+export interface MusicAnalysis {
+  /** Whether the analyzer could run at all. */
+  analyzed: boolean
+  hasAudio: boolean
+  durationSec: number | null
+  container: string | null
+  codec: string | null
+  sampleRate: number | null
+  channels: number | null
+}
+
+/**
+ * Analyze a candidate music file with ffprobe. Used by the global Music Center
+ * import. An MP3/WAV with no decodable audio stream is NOT a valid track. When
+ * ffprobe is unavailable, `analyzed` is false and the caller keeps what it knows
+ * (never invalidating an otherwise-valid file).
+ */
+export async function analyzeMusicFile(filePath: string): Promise<MusicAnalysis> {
+  const unknown: MusicAnalysis = {
+    analyzed: false, hasAudio: false, durationSec: null, container: null, codec: null, sampleRate: null, channels: null,
+  }
+  const { ffprobe } = await resolveTools()
+  if (!ffprobe) return unknown
+  try {
+    const meta = await probe(ffprobe, filePath)
+    return {
+      analyzed: true,
+      hasAudio: meta.hasAudio,
+      durationSec: meta.durationSec,
+      container: meta.container,
+      codec: meta.audioCodec,
+      sampleRate: meta.audioSampleRate,
+      channels: meta.audioChannels,
+    }
+    // A probe failure must never crash an import or the legacy migration — the
+    // caller keeps what it already knows (never invalidating a valid file).
+  } catch {
+    return unknown
+  }
+}
+
 async function probe(ffprobe: string, filePath: string): Promise<ProbeResult> {
   const { stdout } = await execFileAsync(
     ffprobe,
