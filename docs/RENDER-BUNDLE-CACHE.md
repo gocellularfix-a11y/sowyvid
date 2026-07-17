@@ -119,6 +119,24 @@ Tested with **real junctions** on this machine (the test first proves the
 environment can actually create one, so the guarantee is never vacuously green):
 a junction into user media is refused and the media survives.
 
+## Packaged mode (prebuilt bundle)
+
+A packaged app has no repository, no webpack and no `@remotion/bundler`. At
+package time, `scripts/prepare-render-bundle.ts` compiles the bundle **with the
+same compiler and stamps it with the same fingerprint function** used in
+development, and electron-builder ships it as `resources/render-bundle`. At
+runtime, `ensureRenderBundle` in prebuilt mode treats the shipped stamp's
+fingerprint as current (the shipped bundle is immutable per installed version)
+and "building" means **copying** the shipped bundle into the fingerprinted
+cache. Everything else — the decision table, the stamp-after-success rule, the
+guarded deletion, the self-repair of stale/unstamped caches — is byte-for-byte
+the same code path.
+
+Verified against the packaged `.exe` with a **planted stale cache** at exactly
+the shipped fingerprint's directory name: the packaged app replaced it before
+rendering and the output was measurably audible
+(`docs/WINDOWS-PACKAGED-VALIDATION.md`).
+
 ## Isolation
 
 The render cache lives in the app's **userData** directory

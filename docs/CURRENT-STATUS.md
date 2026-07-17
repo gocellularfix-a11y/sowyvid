@@ -41,7 +41,8 @@ Honest, per-feature state. Legend:
 | C+ | **Live managed-video playback** | ✅ | `<OffthreadVideo>` replaces the poster-only still; trim to scene, plan-defined short-clip loop/freeze, poster as loading/failure fallback, **source audio muted by default**; protocol now honors byte ranges (seeking). Verified with a real ffmpeg clip decoding/playing/seeking in Electron (`docs/VIDEO-ENGINE.md`) |
 | D | **SoundWeave audio planning** | ✅ | Validated, persisted AudioPlan (engine name/version, music, narration, source-audio policy, fades, looping, ducking, **explicit missing-track state**); real audio in the `<Player>` with master/music/narration/source controls; missing audio warns without breaking. Verified with a real mp3 decoding/playing in Electron (`docs/SOUNDWEAVE-INTEGRATION.md`) |
 | D+ | **Manual Suno music brief** | 🟡 | Provider contract + registry + deterministic brief (Northstar intent + FrameLogic energy + SoundWeave duration) implemented and tested. **No UI** — no copy button, no "Abrir Suno". `SunoProvider` has no `generateTrack` at all; no unofficial APIs (`docs/SUNO-MANUAL-WORKFLOW.md`) |
-| E | **Production MP4 render engine** | 🟡 | Real H.264 + AAC rendered through the production path from the same composition props as the preview; fingerprinted bundle cache (self-repairing, junction-safe), loopback render media server, progress/cancel/atomic publish/temp cleanup. **Verified audible (−26.8 dBFS) and non-black** via `npm run verify:render`. **"Descargar video" is NOT wired** — no IPC, no history, no UI (`docs/MP4-EXPORT.md`) |
+| E | **Owner MP4 export ("Descargar video")** | ✅ | The button drives the production engine: typed ids-only IPC, job registry (one render per project, monotone progress, Spanish stages, safe cancel), native save dialog + presets, sanitized never-silently-overwritten filenames, restart-safe export history with stable failure codes. Proven by clicking the real button in real Electron — real MP4, RMS-audible, history survives restart (`docs/MP4-EXPORT.md`) |
+| F | **Windows packaged validation** | ✅ | The packaged `SowyVid.exe` (win-unpacked) exported a real 1080×1920 MP4 — h264+aac, **−26.9 dBFS**, frames validated — **from a planted stale cache**, using the shipped prebuilt render bundle, shipped browser, unpacked compositor and asar-fixed ffmpeg/ffprobe. NSIS installer NOT validated (`docs/WINDOWS-PACKAGED-VALIDATION.md`) |
 
 ## Engine vault (Jorge Engine Vault v1.0.0)
 
@@ -87,16 +88,15 @@ independently re-run here — they will be validated as each is integrated.
 
 ## What does NOT work yet (not pretended to)
 
-- **The owner cannot export.** The render ENGINE works and is verified (a real,
-  audible, non-black MP4 through the production path), but **"Descargar video" is
-  still inactive**: no IPC handler, no output-folder picker, no progress/cancel UI,
-  no export history, no open-file/open-folder, no retry. Export is reachable only
-  from `npm run verify:render`.
-- **Packaged-path validation is NOT done.** Everything is verified in development
-  only. The render bundler compiles `src/render/remotionEntry.ts` **from source at
-  runtime**, which a packaged build must ship — the biggest open unknown.
+- **The NSIS installer is unvalidated** — packaged validation ran against the
+  unpacked (`--dir`) build. No installed-from-setup.exe run has been performed.
+  Binaries are unsigned.
 - **No music library UI and no metadata form** — `audio.musicId` and `audioMeta`
-  are honored by the engine but cannot be set from the interface.
+  are honored by the engine (and by the export), but the interface has no way to
+  choose/preview/replace a track or fill in metadata. Tests set `musicId` via the
+  bridge; an owner cannot yet.
+- **Human hearing confirmation is Jorge's gate** — automation measures RMS and
+  validates decode; it does not listen through speakers.
 - **No music library UI yet** — the AudioPlan resolves `audio.musicId`, but choosing /
   previewing / replacing a track in the interface is not built. The Suno music brief is
   likewise not wired into the UI.
@@ -125,22 +125,13 @@ independently re-run here — they will be validated as each is integrated.
 
 ## Recommended next step
 
-**Wire "Descargar video" to the render engine that already works.** The hard part
-is done and measured; what is missing is the bridge from the button to
-`runRenderJob`:
+The export vertical is closed: an owner can click **Descargar video** in the
+packaged app and receive a real, audible MP4, and see it in history after a
+restart. Next, in order of value:
 
-1. **IPC + job registry** — `render.start` / `render.cancel` + a progress event
-   channel; one active render per project; gate the button on a valid creative
-   plan, a valid visual plan, all managed assets resolving, and no active render.
-2. **Export history + output folder** — persist each export (path, preset,
-   fingerprint, measured duration/size) with open-file / open-containing-folder /
-   retry.
-3. **Music library UI + Suno brief UI** — choose/preview/replace a track, fill in
-   `audioMeta`, copy the brief, "Abrir Suno".
-4. **Packaged-path validation** (`docs/MP4-EXPORT.md` — *Not done*). The bundler
-   compiles `src/render/remotionEntry.ts` from source at runtime; a packaged build
-   must ship it. Build a Windows unpacked package and prove ffmpeg/ffprobe
-   resolve, the media protocol resolves, and a real render is audible — do not
-   claim packaging readiness from development mode.
-
-Then BridgeDrop (phone import) and PromptGate (AI) — **not** this milestone.
+1. **Music library UI + Suno brief UI** — choose/preview/replace a track, fill
+   in `audioMeta`, copy the brief, "Abrir Suno". The engine and export already
+   honor all of it; only the interface is missing.
+2. **Installer validation** — build and install the NSIS setup, re-run the
+   packaged export checks against the installed app; then signing.
+3. Then BridgeDrop (phone import) and PromptGate (AI) — separate milestones.

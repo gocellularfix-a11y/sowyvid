@@ -42,6 +42,16 @@ look identical. So `realRender.test.ts` renders a **deliberately silent** MP4
 
 The same is done for picture: an all-black video must be detected as black.
 
+## Measured evidence — packaged app (the owner's real path)
+
+`npm run test:e2e:packaged` — the packaged `SowyVid.exe`, the real button, a
+planted stale cache:
+
+```
+1080x1920 · 18.048s · 5,025,409 bytes · h264 + aac 48kHz stereo
+mean_volume −26.9 dBFS (threshold −50) → AUDIBLE
+```
+
 ## Measured evidence (real render, production path)
 
 `npm run verify:render` prints a block like:

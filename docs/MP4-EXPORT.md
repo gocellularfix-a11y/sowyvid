@@ -1,10 +1,11 @@
 # MP4 Export
 
-> Status: **Render engine implemented and verified; the interface is NOT wired
-> yet.** A real, audible, non-black MP4 is produced through the production path
-> and proven by `npm run verify:render` — but **"Descargar video" is still
-> inactive**, because the IPC wiring, export history and UI are not built. See
-> *Not done* below. Nothing here claims an owner can click a button and get a file.
+> Status: **Complete, including the owner's button.** "Descargar video" drives
+> the production render engine end to end: preset → native save dialog →
+> progress → a real, audible MP4 → export history that survives restart.
+> Proven by clicking the real button in the real Electron app
+> (`e2e-electron/export-button.spec.ts`) **and in the packaged Windows build**
+> (`docs/WINDOWS-PACKAGED-VALIDATION.md`).
 
 ## Pipeline
 
@@ -100,15 +101,71 @@ blank, scenes visibly change, the CTA frame is real, duration matches the plan,
 the stale bundle was replaced, a second render reuses the bundle **and is still
 audible**, cancellation mid-encode leaves no output and no scratch.
 
+## The owner's button (implemented)
+
+### IPC design
+
+The renderer sends ONLY ids — `{ projectId, presetId }`, `{ jobId }`,
+`{ exportId }` — every path, dimension, prop and asset reference is
+reconstructed in the main process from persisted project data
+(`src/electron/ipc/renderHandlers.ts`). Channels, all Zod-validated:
+
+| Channel | Does |
+|---|---|
+| `render:start` | gate → native save dialog → registry.start with the real `runRenderJob` |
+| `render:cancel` | cooperative cancel; unknown/terminal jobs return `false` calmly |
+| `render:status` | active job + readiness (Spanish blockers) + preset catalog + default |
+| `render:listHistory` | full records + live `fileExists` (detects manual deletion) |
+| `render:retry` | re-run a past export with its preset into its folder (numbered name); folder gone → save dialog |
+| `render:openFile` / `render:openFolder` | Electron safe shell APIs only; missing files answered calmly |
+| `render:progress` (event) | job snapshots (state, %, Spanish stage, diagnostic code) |
+
+### Job lifecycle (`src/features/render/jobRegistry.ts`)
+
+```
+queued → preparing → bundling → rendering → publishing → completed
+                                       ↘ failed / canceled
+```
+
+One active render per project, enforced **synchronously** (a double click
+cannot race two jobs). Progress is monotone; a late tick can never resurrect a
+terminal job. History callbacks are **awaited before "completed" is reported**,
+so a completed state always means the row is already durable. Rows still
+`rendering` at startup are repaired to `failed/interrupted`.
+
+### Export history schema (migration v3)
+
+One row per ATTEMPT: `id, projectId, createdAt, completedAt, status
+(rendering|completed|failed|canceled), preset, width, height, fps, durationSec,
+outputPath, bytes, videoCodec, audioCodec, fingerprint, failureCode`.
+`outputPath` is the one absolute path allowed to persist — the destination the
+owner explicitly chose. Plans never carry paths. Failure codes are stable
+(`interrupted | canceled | output-unavailable | missing-media |
+tools-unavailable | render-failed`) and map to calm Spanish copy in the UI.
+
+### Output folder & filenames (§5)
+
+Native save dialog (default: `Videos/comercial-<project>.mp4`); the dialog's
+own replace prompt covers intentional overwrite. Names are sanitized
+(Windows-reserved names, unsafe characters, trailing dots, length) and the
+seam/retry paths — which have no dialog — produce `name-2.mp4`, `name-3.mp4`, …
+rather than ever overwriting silently. Presets: Vertical 9:16 (1080×1920),
+Cuadrado 1:1 (1080×1080), Horizontal 16:9 (1920×1080), plus "Como se diseñó";
+the plan's own ratio is default and non-matching ratios are disabled rather
+than re-cropped.
+
+### Gating (§6)
+
+Ready only when: project exists · creative selection compiles · VisualPlan and
+AudioPlan validate · every referenced media/audio file resolves on disk *now* ·
+no active render. A **selected-but-missing music track blocks** with a Spanish
+message; a plan that is silent by explicit choice renders fine. The same
+evaluation runs server-side at `render:start`, so a stale renderer cannot
+bypass the button state.
+
 ## Not done (do not claim these work)
 
-- **"Descargar video" is still inactive.** No IPC handler, no output-folder
-  picker, no progress UI, no cancel button, no export history, no "open file" /
-  "open containing folder", no retry. The gating rules (valid creative plan,
-  valid visual plan, all assets resolve, no active render, one render per
-  project) are **specified but not implemented** in the UI.
-- **Packaged-path validation is NOT done** (`docs/PACKAGED-PATH.md` does not
-  exist yet). Everything above is verified in **development only**. The bundler
-  compiles `src/render/remotionEntry.ts` **from source at runtime**, which a
-  packaged build must actually ship — this is the single biggest unknown and the
-  most likely thing to break first in a real `.exe`.
+- **The NSIS installer is unvalidated** — packaged validation ran against the
+  `--dir` unpacked build (`docs/WINDOWS-PACKAGED-VALIDATION.md`).
+- **Human hearing confirmation** of the exported audio remains Jorge's gate;
+  automation measures RMS and validates decode, not speakers.

@@ -1,6 +1,6 @@
 # SowyVid — Engineering Handoff
 
-_Last updated at commit `88d1260` (branch `main`, synced with `origin/main`)._
+_Last updated at commit `aad43b5` (branch `main`, synced with `origin/main`)._
 
 ## What this is
 
@@ -62,24 +62,26 @@ preview** with **live-playing video** and **real audio** (music/narration/source
 fades, ducking, master/music/narration/source controls) → everything **persists and
 survives restart**. Reference-safe deletion + missing-file detection included.
 
-**The render engine produces a real MP4** through the production path — verified
-audible and non-black — but see the gap below.
+**The owner can export**: "Descargar video" → preset → save dialog → progress →
+a real, audible MP4 → restart-safe history with open-file/open-folder/retry.
+Proven by clicking the real button in the real app (`e2e-electron/
+export-button.spec.ts`) **and inside the packaged Windows `.exe`** with a
+planted stale cache: 1080×1920, 18.05s, h264+aac, **−26.9 dBFS**
+(`docs/WINDOWS-PACKAGED-VALIDATION.md`).
 
 ## What is NOT done (do not claim these work)
 
-- **The owner cannot export.** The engine works (`npm run verify:render` →
-  406x720, 20.05s, h264+aac, **−26.8 dBFS**), but **"Descargar video" is NOT
-  wired**: no IPC, no output-folder picker, no progress/cancel UI, no export
-  history, no open-file/open-folder, no retry. **This is the next task.**
-- **Packaged-path validation** — everything is verified in **development only**.
-  The render bundler compiles `src/render/remotionEntry.ts` **from source at
-  runtime**; a packaged build must ship it. Biggest open unknown.
-- **No music library UI / metadata form / Suno brief UI** — the engine honors
-  `audio.musicId` and `audioMeta`, but nothing in the interface sets them.
+- **The NSIS installer is unvalidated** — packaged validation used the
+  win-unpacked build. No installed-from-setup.exe run; binaries unsigned.
+- **No music library UI / metadata form / Suno brief UI** — the engine and the
+  export honor `audio.musicId` and `audioMeta`, but nothing in the interface
+  sets them (tests set them via the bridge).
 - **No narration source** — the AudioPlan supports imported narration; SowyVid has
   no TTS (PromptGate deferred).
 - **Phone upload** (BridgeDrop, "Mi teléfono" unavailable), **AI** (PromptGate).
   **Social publishing** is blocked (no OAuth/app review).
+- **Jorge's ears remain the final audio gate** — automation measures RMS and
+  decode, not speakers.
 
 ## Read before touching the render cache
 
@@ -104,11 +106,14 @@ npm run test:e2e          # Playwright browser smoke
 npm run test:e2e:electron # builds, then Playwright drives the REAL Electron app
 npm run build             # electron-vite production build
 npm run verify:render     # REAL MP4 render + measured audio RMS + frame checks
+npm run package:win       # electron-vite build + prebuilt render bundle + win-unpacked
+npm run test:e2e:packaged # packages, launches the REAL SowyVid.exe, validates its MP4
 ```
 
-Current status: typecheck ✓ · lint ✓ · **257 unit** ✓ · **5 browser e2e** ✓ ·
-**5 real-Electron e2e** ✓ · build ✓ · **verify:render ✓ (11 tests)**. Honest
-per-feature state: **`docs/CURRENT-STATUS.md`**.
+Current status: typecheck ✓ · lint ✓ · **304 unit** ✓ · **5 browser e2e** ✓ ·
+**7 real-Electron e2e** ✓ · **2 packaged e2e** ✓ · build ✓ ·
+**verify:render ✓ (13 tests)**. Honest per-feature state:
+**`docs/CURRENT-STATUS.md`**.
 
 ## Key locations
 
@@ -146,20 +151,16 @@ per-feature state: **`docs/CURRENT-STATUS.md`**.
 
 ## Recommended next step
 
-**Wire "Descargar video" to the render engine that already works.** Everything
-below it is done and measured; only the bridge is missing:
+The export vertical is **closed**: an owner can open the packaged app, click
+"Descargar video", choose a destination, and receive a real, audible MP4 that
+appears in history after a restart. Next, in order of value:
 
-1. **IPC + job registry** — `render.start` / `render.cancel` + a progress channel.
-   One active render per project. Gate the button on: valid creative plan, valid
-   visual plan, all managed assets resolve, no active render.
-   Call `runRenderJob({ projectId, props, preset, outputPath, cache, tempRoot,
-   resolveAsset })` — `resolveAsset` mirrors `mediaProtocol.ts`.
-2. **Export history + output folder** — persist path/preset/fingerprint/size, with
-   open-file, open-containing-folder and retry.
-3. **Packaged-path validation** — build a Windows unpacked package and prove
-   ffmpeg/ffprobe resolve, the media protocol resolves, and a real render is
-   audible. Do **not** claim packaging readiness from development mode.
-4. **Music library UI + Suno brief UI**, then narration.
+1. **Music library UI + Suno brief UI** — choose/preview/replace a track, fill
+   in `audioMeta`, copy the brief, "Abrir Suno". The engine and the export
+   already honor everything; only the interface is missing.
+2. **Installer validation + signing** — build and install the NSIS setup,
+   re-run the packaged export checks against the installed app.
+3. Then BridgeDrop (phone import), then PromptGate (AI/narration).
 
-Then BridgeDrop, then PromptGate. Do **not** expand breadth before an owner can
-actually click a button and get their file.
+Packaged specifics — resource map, dev-vs-packaged resolution, test seams, the
+asar spawn pitfall — live in **`docs/WINDOWS-PACKAGED-VALIDATION.md`**.

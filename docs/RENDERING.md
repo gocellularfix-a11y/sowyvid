@@ -1,9 +1,10 @@
 # Rendering (Preview & Export)
 
-> Status: **Both implemented.** Preview is a real Remotion `<Player>` with live
-> video and audio; MP4 export renders through `@remotion/renderer` and is
-> verified to be audible and non-black — but **the "Descargar video" button is
-> not wired yet**.
+> Status: **Both complete, including the owner's button and the packaged app.**
+> Preview is a real Remotion `<Player>` with live video and audio; "Descargar
+> video" renders through `@remotion/renderer` with progress/cancel/history, and
+> the packaged Windows build produced and validated a real audiovisual MP4
+> (`docs/WINDOWS-PACKAGED-VALIDATION.md`).
 >
 > Authoritative documents:
 >

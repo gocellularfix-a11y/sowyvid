@@ -98,6 +98,20 @@ guarantees plus render-specific containment:
 
 No filesystem path enters the composition props at any point.
 
+### Render IPC (implemented — see MP4-EXPORT.md)
+
+The export surface never accepts capability from the renderer: payloads are
+`{ projectId, presetId }` / `{ jobId }` / `{ exportId }` only, Zod-validated.
+Filesystem source paths, shell commands, bundle paths, composition modules and
+executable arguments cannot cross the bridge — the main process reconstructs
+the entire render request from persisted project data, and the destination
+comes from a native save dialog it shows itself. Open-file/open-folder use
+`shell.openPath` / `shell.showItemInFolder` on a persisted, re-validated record
+path — never a shell string. Test seams (`SOWYVID_E2E_EXPORT_DIR`,
+`SOWYVID_E2E_SUPPRESS_OPEN`, `SOWYVID_E2E_USER_DATA`) are env-gated and change
+where a dialog answer comes from or whether a final window opens — never the
+render path; redirecting one's own local app data is not a security boundary.
+
 ### Render cache deletion (implemented — see RENDER-BUNDLE-CACHE.md)
 
 Refreshing a stale render bundle means deleting a directory, and a delete that
