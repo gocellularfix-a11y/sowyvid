@@ -10,7 +10,7 @@ import { compileProjectConcept } from '@features/creative'
  */
 
 export interface MediaReference {
-  kind: 'logo' | 'creative-plan' | 'project-version'
+  kind: 'logo' | 'music' | 'creative-plan' | 'project-version'
   /** Owner-facing Spanish label of where the media is used. */
   label: string
 }
@@ -24,6 +24,12 @@ export function findMediaReferences(
 
   if (project.brand.logoMediaId === mediaId) {
     refs.push({ kind: 'logo', label: 'el logo de tu marca' })
+  }
+
+  // The selected music now genuinely drives the export's soundtrack, so
+  // deleting it must be a conscious choice, never a silent hole.
+  if (project.audio.musicId === mediaId) {
+    refs.push({ kind: 'music', label: 'la música de tu comercial' })
   }
 
   if (project.creative) {

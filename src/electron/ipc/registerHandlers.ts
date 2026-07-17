@@ -110,6 +110,12 @@ export function registerHandlers(ctx: HandlerContext): void {
       if (!project) return err('NOT_FOUND', `Project not found: ${projectId}`)
 
       let filePaths = paths
+      if (!filePaths && process.env.SOWYVID_E2E_IMPORT_PATHS) {
+        // E2E seam, symmetric with SOWYVID_E2E_EXPORT_DIR: replaces only the
+        // OPEN dialog's answer so tests can drive the real "Este equipo"
+        // button; the import pipeline is identical.
+        filePaths = process.env.SOWYVID_E2E_IMPORT_PATHS.split(';').filter(Boolean)
+      }
       if (!filePaths) {
         const parent = BrowserWindow.getFocusedWindow()
         const picked = await (parent
@@ -128,7 +134,19 @@ export function registerHandlers(ctx: HandlerContext): void {
       // Deeper analysis (probe + thumbnail/poster) runs as child processes, off
       // the main JS thread; failures never invalidate an otherwise-valid file.
       const analyzedMedia = await analyzeMedia(vaultRoot, summary.media)
-      const saved = repo.save({ ...project, media: analyzedMedia })
+
+      // An owner who adds a music file wants it in their commercial — before
+      // this, an imported mp3 sat unused and the export was silently mute (the
+      // packaged-app failure Jorge reproduced). Auto-select the first valid
+      // audio import as the commercial's music when none is chosen; the owner
+      // can change or remove it from the interface.
+      let audio = project.audio
+      if (!audio.musicId) {
+        const firstMusic = analyzedMedia.find((m) => m.kind === 'audio' && m.valid)
+        if (firstMusic) audio = { ...audio, musicId: firstMusic.id }
+      }
+
+      const saved = repo.save({ ...project, media: analyzedMedia, audio })
       await db.persist()
       const result: MediaImportResult = { canceled: false, outcomes: summary.outcomes, project: saved }
       return ok(result)
@@ -154,12 +172,18 @@ export function registerHandlers(ctx: HandlerContext): void {
 
       const vaultRoot = join(projectDir(projectId), 'media')
       const media = await removeMedia(vaultRoot, project.media, mediaId)
-      // If this was the brand logo, clear the reference so nothing dangles.
+      // If this was the brand logo or the selected music, clear the reference
+      // so nothing dangles (a dangling musicId would block every export with a
+      // missing-audio error the owner cannot see the cause of).
       const brand =
         project.brand.logoMediaId === mediaId
           ? { ...project.brand, logoMediaId: null }
           : project.brand
-      const saved = repo.save({ ...project, brand, media })
+      const audio =
+        project.audio.musicId === mediaId
+          ? { ...project.audio, musicId: null }
+          : project.audio
+      const saved = repo.save({ ...project, brand, audio, media })
       await db.persist()
       const result: MediaRemoveResult = { removed: true, blocked: false, references: [], project: saved }
       return ok(result)
