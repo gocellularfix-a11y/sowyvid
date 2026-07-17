@@ -8,6 +8,7 @@ import {
   PromotionObjective,
 } from './enums'
 import { MediaAsset } from './media'
+import { TextLayoutOverride } from './textLayout'
 
 const hexColor = z
   .string()
@@ -117,6 +118,13 @@ export const Project = z.object({
   /** Deterministic creative-engine selection; null until a concept is compiled. */
   creative: CreativeSelection.nullable().default(null),
   media: z.array(MediaAsset).default([]),
+  /**
+   * Custom text placements (per scene, per role, per aspect ratio). Additive
+   * and defaulted, so pre-editor projects load unchanged and render with the
+   * automatic layout until the owner customizes an element. Lives in the project
+   * JSON — no schema migration needed.
+   */
+  textLayouts: z.array(TextLayoutOverride).default([]),
   status: ProjectStatus.default('draft'),
   createdAt: z.string().datetime(),
   updatedAt: z.string().datetime(),
