@@ -108,34 +108,44 @@ export function visualPlanToCompositionProps(
     placement: scene.placement,
     focal: scene.focal,
     mediaFit: scene.mediaFit,
-    media: scene.media.map((m) => {
-      const asset = byId.get(m.assetId)
-      const kind = asset?.kind ?? 'image'
-      const missing = !asset || !asset.valid
-      const isVideo = !missing && kind === 'video'
+    media: (() => {
+      // Source-audio policy is per SCENE, not per element: when a scene shows
+      // more than one clip, only the FIRST video that actually carries audio
+      // may sound — everything else stays muted, so clips can never overlap
+      // audibly by accident. (Scenes are sequential, so across scenes at most
+      // one clip is audible at any frame.)
+      let sceneAudioClaimed = false
+      return scene.media.map((m) => {
+        const asset = byId.get(m.assetId)
+        const kind = asset?.kind ?? 'image'
+        const missing = !asset || !asset.valid
+        const isVideo = !missing && kind === 'video'
+        const claimsAudio = isVideo && sourceAudio.enabled && asset.hasAudio && !sceneAudioClaimed
+        if (claimsAudio) sceneAudioClaimed = true
 
-      // Videos resolve to their REAL source and play live. The poster is kept as
-      // the loading underlay / decode-failure fallback — never as the content.
-      // Missing assets keep a URL that 404s, so the composition draws its safe
-      // placeholder instead of failing.
-      return {
-        assetId: m.assetId,
-        kind,
-        url: mediaUrlById(projectId, m.assetId, 'original'),
-        posterUrl:
-          isVideo && asset.posterRelPath ? mediaUrlById(projectId, m.assetId, 'poster') : null,
-        missing,
-        playback: isVideo
-          ? computeVideoPlayback({
-              asset,
-              sceneDurationInFrames: scene.durationInFrames,
-              fps: plan.fps,
-              shotBehavior: scene.shotBehavior,
-              sourceAudio,
-            })
-          : null,
-      }
-    }),
+        // Videos resolve to their REAL source and play live. The poster is kept as
+        // the loading underlay / decode-failure fallback — never as the content.
+        // Missing assets keep a URL that 404s, so the composition draws its safe
+        // placeholder instead of failing.
+        return {
+          assetId: m.assetId,
+          kind,
+          url: mediaUrlById(projectId, m.assetId, 'original'),
+          posterUrl:
+            isVideo && asset.posterRelPath ? mediaUrlById(projectId, m.assetId, 'poster') : null,
+          missing,
+          playback: isVideo
+            ? computeVideoPlayback({
+                asset,
+                sceneDurationInFrames: scene.durationInFrames,
+                fps: plan.fps,
+                shotBehavior: scene.shotBehavior,
+                sourceAudio: claimsAudio ? sourceAudio : SOURCE_AUDIO_OFF,
+              })
+            : null,
+        }
+      })
+    })(),
     copy: scene.copy,
     textFrame: scene.textFrame,
     emphasis: scene.emphasis,

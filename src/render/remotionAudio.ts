@@ -124,10 +124,12 @@ export function audioPlanToCompositionAudio(
   // under speech that is not there.
   const duckingEnabled = plan.ducking.enabled && Boolean(music) && narration.length > 0
 
+  // The plan's volume is the OWNER'S setting — 0 must stay 0, never "default
+  // to 1". A control override may toggle availability, not the loudness.
   const sourceEnabled = controls.sourceAudioEnabled ?? plan.sourceAudio.enabled
   const sourceAudio = {
     enabled: sourceEnabled,
-    volume: sourceEnabled ? plan.sourceAudio.volume || 1 : 0,
+    volume: sourceEnabled ? clamp01(plan.sourceAudio.volume) : 0,
   }
 
   const effects = plan.effects.map((t) => toCompositionTrack(t, t.volume))

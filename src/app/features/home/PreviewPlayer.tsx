@@ -14,9 +14,11 @@ import styles from './HomeWorkspace.module.css'
  * SoundWeave AudioPlan (via the SowyVid Remotion adapters) plus imported
  * MediaVault assets (through the controlled media protocol).
  *
- * The controls here are PLAYBACK controls: they modulate an existing plan and
- * never re-plan anything — SoundWeave owns every timing decision. Missing audio
- * shows a visible warning but must never break the preview.
+ * The controls here are PLAYBACK-ONLY (master volume, narration monitor):
+ * they modulate what THIS preview plays and never re-plan anything. The
+ * commercial's real sound decisions — music choice, music volume, source
+ * audio on/off and its volume — are PERSISTED settings edited in the step-4
+ * sound section, so the export renders exactly what the preview played.
  */
 export function PreviewPlayer({
   visualPlan,
@@ -30,13 +32,11 @@ export function PreviewPlayer({
   media: readonly MediaAsset[]
 }): JSX.Element {
   const [masterVolume, setMasterVolume] = useState(1)
-  const [musicVolume, setMusicVolume] = useState<number | null>(null)
   const [narrationEnabled, setNarrationEnabled] = useState(true)
-  const [sourceAudioEnabled, setSourceAudioEnabled] = useState<boolean | null>(null)
 
   const controls: AudioMixControls = useMemo(
-    () => ({ masterVolume, musicVolume, narrationEnabled, sourceAudioEnabled }),
-    [masterVolume, musicVolume, narrationEnabled, sourceAudioEnabled],
+    () => ({ masterVolume, narrationEnabled }),
+    [masterVolume, narrationEnabled],
   )
 
   const audio = useMemo(
@@ -49,7 +49,6 @@ export function PreviewPlayer({
     [visualPlan, projectId, media, audio],
   )
 
-  const hasMusic = Boolean(audio?.music)
   const hasNarration = (audioPlan?.narration.length ?? 0) > 0
 
   return (
@@ -91,21 +90,6 @@ export function PreviewPlayer({
           />
         </label>
 
-        <label className={styles.audioControl}>
-          <span>Volumen de música</span>
-          <input
-            type="range"
-            min={0}
-            max={1}
-            step={0.05}
-            value={musicVolume ?? audioPlan?.music?.volume ?? 0}
-            onChange={(e) => setMusicVolume(Number(e.target.value))}
-            disabled={!hasMusic}
-            data-testid="music-volume"
-            aria-label="Volumen de música"
-          />
-        </label>
-
         <label className={styles.audioToggle}>
           <input
             type="checkbox"
@@ -115,16 +99,6 @@ export function PreviewPlayer({
             data-testid="narration-toggle"
           />
           <span>Narración</span>
-        </label>
-
-        <label className={styles.audioToggle}>
-          <input
-            type="checkbox"
-            checked={sourceAudioEnabled ?? audioPlan?.sourceAudio.enabled ?? false}
-            onChange={(e) => setSourceAudioEnabled(e.target.checked)}
-            data-testid="source-audio-toggle"
-          />
-          <span>Audio de mis videos</span>
         </label>
       </div>
     </ErrorBoundary>

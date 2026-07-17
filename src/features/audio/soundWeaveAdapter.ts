@@ -180,9 +180,18 @@ export function buildAudioPlan(input: BuildAudioPlanInput): AudioPlan {
     (id) => resolved.get(id) ?? null,
   )
 
+  // Source audio is real only when the owner turned it on AND at least one
+  // analyzed video actually carries an audio stream. Without the second check,
+  // `silent: false` could claim sound that no clip can produce.
+  const anyVideoWithAudio = media.some(
+    (m) => m.kind === 'video' && m.valid && m.hasAudio,
+  )
+  const sourceAudioOn = audio.useSourceAudio && anyVideoWithAudio
+  // `volume` keeps the owner's setting even while disabled: enabling is a
+  // separate decision from how loud, and playback gates on `enabled` anyway.
   const sourceAudio = {
-    enabled: audio.useSourceAudio,
-    volume: audio.useSourceAudio ? 1 : 0,
+    enabled: sourceAudioOn,
+    volume: audio.sourceAudioVolume,
   }
 
   // The engine returns null when there is nothing to play. That is not an error —

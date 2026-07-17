@@ -4,7 +4,7 @@ import { visualPlanToCompositionProps } from './remotionProps'
 import { buildAudioPlan } from '@features/audio'
 import { buildVisualPlan } from '@features/visual'
 import { developProjectConcepts, compileProjectConcept } from '@features/creative'
-import { goCellularProject, aud } from '@shared/fixtures/goCellular'
+import { goCellularProject, GO_CELLULAR_VIDEO_MEDIA, aud } from '@shared/fixtures/goCellular'
 import type { AudioConfig } from '@shared/domain/project'
 
 const concept = developProjectConcepts(goCellularProject, 1)[0]!
@@ -27,6 +27,7 @@ function audioCfg(over: Partial<AudioConfig> = {}): AudioConfig {
     useSourceAudio: false,
     musicVolume: 0.8,
     narrationVolume: 1,
+    sourceAudioVolume: 1,
     ...over,
   }
 }
@@ -150,7 +151,10 @@ describe('preview controls modulate the plan without re-planning it', () => {
     const on = audioPlanToCompositionAudio(plan({}), { sourceAudioEnabled: true })
     expect(on.sourceAudio.enabled).toBe(true)
     expect(on.sourceAudio.volume).toBeGreaterThan(0)
-    const off = audioPlanToCompositionAudio(plan({ useSourceAudio: true }), { sourceAudioEnabled: false })
+    const off = audioPlanToCompositionAudio(
+      plan({ useSourceAudio: true }, [MUSIC, VOICE, ...GO_CELLULAR_VIDEO_MEDIA]),
+      { sourceAudioEnabled: false },
+    )
     expect(off.sourceAudio.enabled).toBe(false)
     expect(off.sourceAudio.volume).toBe(0)
   })
@@ -180,9 +184,9 @@ describe('missing audio warns without breaking the composition', () => {
 })
 
 describe('the AudioPlan governs source-video audio', () => {
-  const props = (audioOver: Partial<AudioConfig>) =>
+  const props = (audioOver: Partial<AudioConfig>, extra = [MUSIC, VOICE]) =>
     visualPlanToCompositionProps(visualPlan, goCellularProject.id, goCellularProject.media, {
-      audio: audioPlanToCompositionAudio(plan(audioOver)),
+      audio: audioPlanToCompositionAudio(plan(audioOver, extra)),
     })
 
   it('mutes clips when the plan says source audio is off', () => {
@@ -191,7 +195,10 @@ describe('the AudioPlan governs source-video audio', () => {
 
   it('enables clip audio when the plan says so — one source of truth', () => {
     // The picture and the mix must never disagree about source audio.
-    expect(props({ useSourceAudio: true }).audio!.sourceAudio.enabled).toBe(true)
+    expect(
+      props({ useSourceAudio: true }, [MUSIC, VOICE, ...GO_CELLULAR_VIDEO_MEDIA]).audio!
+        .sourceAudio.enabled,
+    ).toBe(true)
   })
 
   it('a composition with no audio at all is a valid, explicit state', () => {

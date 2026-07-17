@@ -65,6 +65,12 @@ interface ProbeResult {
   durationSec: number | null
   fps: number | null
   hasAudio: boolean
+  hasVideo: boolean
+  container: string | null
+  videoCodec: string | null
+  audioCodec: string | null
+  audioSampleRate: number | null
+  audioChannels: number | null
 }
 
 function parseFps(rate: string | undefined): number | null {
@@ -81,20 +87,36 @@ async function probe(ffprobe: string, filePath: string): Promise<ProbeResult> {
     { timeout: 20_000, maxBuffer: 8 * 1024 * 1024 },
   )
   const data = JSON.parse(stdout) as {
-    streams?: Array<{ codec_type?: string; width?: number; height?: number; avg_frame_rate?: string; duration?: string }>
-    format?: { duration?: string }
+    streams?: Array<{
+      codec_type?: string
+      codec_name?: string
+      width?: number
+      height?: number
+      avg_frame_rate?: string
+      duration?: string
+      sample_rate?: string
+      channels?: number
+    }>
+    format?: { duration?: string; format_name?: string }
   }
   const streams = data.streams ?? []
   const video = streams.find((s) => s.codec_type === 'video')
   const audio = streams.find((s) => s.codec_type === 'audio')
   const durationRaw = data.format?.duration ?? video?.duration ?? audio?.duration
   const durationSec = durationRaw ? Number(Number(durationRaw).toFixed(3)) : null
+  const sampleRate = audio?.sample_rate ? Number(audio.sample_rate) : null
   return {
     width: video?.width ?? null,
     height: video?.height ?? null,
     durationSec: durationSec && durationSec > 0 ? durationSec : null,
     fps: parseFps(video?.avg_frame_rate),
     hasAudio: Boolean(audio),
+    hasVideo: Boolean(video),
+    container: data.format?.format_name ?? null,
+    videoCodec: video?.codec_name ?? null,
+    audioCodec: audio?.codec_name ?? null,
+    audioSampleRate: sampleRate && sampleRate > 0 ? sampleRate : null,
+    audioChannels: audio?.channels && audio.channels > 0 ? audio.channels : null,
   }
 }
 
@@ -133,11 +155,24 @@ export async function analyzeAsset(
 
     if (asset.kind === 'audio') {
       const meta = ffprobe ? await probe(ffprobe, filePath) : null
+      // The extension proposed "music" — the analyzed content must agree. A
+      // file with no decodable audio stream is not a music candidate.
+      if (meta && !meta.hasAudio) {
+        return { analysisStatus: 'failed', analysisError: 'no-audio-stream', valid: false }
+      }
       return {
         analysisStatus: 'ready',
         analysisError: null,
         hasAudio: true,
         ...(meta?.durationSec ? { durationSec: meta.durationSec } : {}),
+        ...(meta
+          ? {
+              container: meta.container,
+              audioCodec: meta.audioCodec,
+              audioSampleRate: meta.audioSampleRate,
+              audioChannels: meta.audioChannels,
+            }
+          : {}),
       }
     }
 
@@ -146,6 +181,11 @@ export async function analyzeAsset(
       return { analysisStatus: 'failed', analysisError: 'analyzer-unavailable' }
     }
     const meta = await probe(ffprobe, filePath)
+    // Extension said video, container has no video stream → visibly invalid,
+    // never silently treated as something else.
+    if (!meta.hasVideo) {
+      return { analysisStatus: 'failed', analysisError: 'no-video-stream', valid: false }
+    }
     const poster = await maybePoster(ffmpeg, vaultRoot, filePath, hash, meta.durationSec)
     return {
       analysisStatus: 'ready',
@@ -156,6 +196,11 @@ export async function analyzeAsset(
       durationSec: meta.durationSec,
       fps: meta.fps,
       hasAudio: meta.hasAudio,
+      container: meta.container,
+      videoCodec: meta.videoCodec,
+      audioCodec: meta.audioCodec,
+      audioSampleRate: meta.audioSampleRate,
+      audioChannels: meta.audioChannels,
       ...(poster ? { posterRelPath: poster } : {}),
     }
   } catch (e) {

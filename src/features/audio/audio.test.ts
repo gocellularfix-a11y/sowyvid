@@ -3,7 +3,7 @@ import { buildAudioPlan, sceneWindowsFrom } from './soundWeaveAdapter'
 import { validateAudioPlan, planHasAudio, AudioPlanSchema } from './audioPlan'
 import { buildVisualPlan } from '@features/visual'
 import { developProjectConcepts, compileProjectConcept } from '@features/creative'
-import { goCellularProject, aud } from '@shared/fixtures/goCellular'
+import { goCellularProject, GO_CELLULAR_VIDEO_MEDIA, aud } from '@shared/fixtures/goCellular'
 import type { Project } from '@shared/domain/project'
 import type { MediaAsset } from '@shared/domain/media'
 import type { AudioConfig } from '@shared/domain/project'
@@ -33,6 +33,7 @@ function audioCfg(over: Partial<AudioConfig> = {}): AudioConfig {
     useSourceAudio: false,
     musicVolume: 0.8,
     narrationVolume: 1,
+    sourceAudioVolume: 1,
     ...over,
   }
 }
@@ -223,15 +224,30 @@ describe('narration and ducking', () => {
 describe('source-video audio policy', () => {
   it('is off by default', () => {
     const plan = build({})
-    expect(plan.sourceAudio).toEqual({ enabled: false, volume: 0 })
+    // Disabled, but the volume keeps the owner's preference for when they turn
+    // it on — playback gates on `enabled`, so nothing sounds while off.
+    expect(plan.sourceAudio).toEqual({ enabled: false, volume: 1 })
   })
 
-  it('turns on only when the owner asks', () => {
-    const plan = build({ useSourceAudio: true })
+  it('turns on only when the owner asks AND a clip can actually sound', () => {
+    const plan = build({ useSourceAudio: true }, GO_CELLULAR_VIDEO_MEDIA)
     expect(plan.sourceAudio.enabled).toBe(true)
     expect(plan.sourceAudio.volume).toBeGreaterThan(0)
     // Source audio alone still counts as audible.
     expect(plan.silent).toBe(false)
+  })
+
+  it('stays honest when no imported video carries audio', () => {
+    // Owner flag on, but only images in the project: claiming sound here
+    // would make `silent` lie to the export gate.
+    const plan = build({ useSourceAudio: true })
+    expect(plan.sourceAudio.enabled).toBe(false)
+    expect(plan.silent).toBe(true)
+  })
+
+  it('honors the owner-chosen source-audio volume', () => {
+    const plan = build({ useSourceAudio: true, sourceAudioVolume: 0.4 }, GO_CELLULAR_VIDEO_MEDIA)
+    expect(plan.sourceAudio.volume).toBeCloseTo(0.4)
   })
 })
 

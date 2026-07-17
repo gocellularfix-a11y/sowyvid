@@ -33,6 +33,8 @@ export const AudioConfig = z.object({
   useSourceAudio: z.boolean().default(false),
   musicVolume: z.number().min(0).max(1).default(0.8),
   narrationVolume: z.number().min(0).max(1).default(1),
+  /** Volume of the ORIGINAL audio inside imported video clips (when enabled). */
+  sourceAudioVolume: z.number().min(0).max(1).default(1),
 })
 export type AudioConfig = z.infer<typeof AudioConfig>
 

@@ -54,6 +54,16 @@ export const MediaAsset = z.object({
   /** Frames per second (video), set by analysis when detectable. */
   fps: z.number().positive().nullable().default(null),
   hasAudio: z.boolean(),
+  /**
+   * What ffprobe found INSIDE the file — the identity SowyVid trusts. The
+   * extension only proposes; the analyzed content decides. Null until the
+   * deeper analysis pass runs (or when the tool is unavailable).
+   */
+  container: z.string().nullable().default(null),
+  videoCodec: z.string().nullable().default(null),
+  audioCodec: z.string().nullable().default(null),
+  audioSampleRate: z.number().int().positive().nullable().default(null),
+  audioChannels: z.number().int().positive().nullable().default(null),
   /** Relative path to a generated image thumbnail, if any. */
   thumbRelPath: z.string().nullable(),
   /** Relative path to a generated video poster frame, if any. */
