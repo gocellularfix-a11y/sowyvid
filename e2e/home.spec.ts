@@ -49,7 +49,9 @@ test.describe('SowyVid home', () => {
 
     await expect(page.getByTestId('audio-controls')).toBeVisible()
     await expect(page.getByTestId('master-volume')).toBeVisible()
-    await expect(page.getByTestId('source-audio-toggle')).toBeVisible()
+    // With no imported media there is neither music nor an audible video, so
+    // the commercial is honestly flagged as silent.
+    await expect(page.getByTestId('silent-warning')).toBeVisible()
 
     // Regression guard: the step column is a flex column, so adding controls
     // beside the player once shrank it to zero height. The player must keep a
@@ -64,6 +66,13 @@ test.describe('SowyVid home', () => {
 
   test('sidebar navigation switches sections', async ({ page }) => {
     await page.getByRole('button', { name: 'Mis comerciales' }).click()
-    await expect(page.getByRole('heading', { name: 'Mis comerciales' })).toBeVisible()
+    // In plain-browser preview the library needs the desktop app; the section
+    // still switches and says so.
+    await expect(page.getByText(/Mis comerciales está disponible/)).toBeVisible()
+  })
+
+  test('the current-commercial bar and "Nuevo comercial" are visible on Home', async ({ page }) => {
+    await expect(page.getByTestId('current-commercial')).toBeVisible()
+    await expect(page.getByTestId('new-commercial')).toBeVisible()
   })
 })
