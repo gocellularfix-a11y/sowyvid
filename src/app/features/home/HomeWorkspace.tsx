@@ -12,6 +12,7 @@ import { PreviewPlayer } from './PreviewPlayer'
 import { ExportPanel } from './ExportPanel'
 import type { MediaAsset } from '@shared/domain/media'
 import type { AudioConfig } from '@shared/domain/project'
+import type { TextLayoutOverride } from '@shared/domain/textLayout'
 import type { MediaReference } from '@features/media/mediaReferences'
 import type { VisualPlan } from '@features/visual/visualPlan'
 import type { AudioPlan } from '@features/audio/audioPlan'
@@ -77,11 +78,13 @@ export function HomeWorkspace({
   const [media, setMedia] = useState<MediaAsset[]>([])
   const [audioCfg, setAudioCfg] = useState<AudioConfig | null>(null)
   const [libraryMusicTitle, setLibraryMusicTitle] = useState<string | null>(null)
+  const [textLayouts, setTextLayouts] = useState<TextLayoutOverride[]>([])
   const [importing, setImporting] = useState(false)
   const [removeDialog, setRemoveDialog] = useState<RemoveDialogState | null>(null)
 
   const musicVolumeTimer = useRef<number | null>(null)
   const sourceVolumeTimer = useRef<number | null>(null)
+  const textLayoutsTimer = useRef<number | null>(null)
 
   const canGenerate = description.trim().length > 0
 
@@ -128,6 +131,7 @@ export function HomeWorkspace({
       setProjectName(project.name)
       setMedia(project.media)
       setAudioCfg(project.audio)
+      setTextLayouts(project.textLayouts)
       if (project.brief.productOrService) setDescription(project.brief.productOrService)
       if (project.creative) await refreshPlans(project.id)
     })()
@@ -229,12 +233,33 @@ export function HomeWorkspace({
     name: string
     media: MediaAsset[]
     audio: AudioConfig
+    textLayouts: TextLayoutOverride[]
     creative: unknown
   }): Promise<void> => {
     setMedia(project.media)
     setAudioCfg(project.audio)
+    setTextLayouts(project.textLayouts)
     setProjectName(project.name)
     if (project.creative) await refreshPlans(project.id)
+  }
+
+  /**
+   * Custom text placements: update the preview instantly (props only — no
+   * concept recompile is needed, layouts are applied in the composition props),
+   * then persist after a short idle so a drag saves once, not per pixel.
+   */
+  const onTextLayoutsChange = (next: TextLayoutOverride[]): void => {
+    setTextLayouts(next)
+    if (!projectId) return
+    if (textLayoutsTimer.current) window.clearTimeout(textLayoutsTimer.current)
+    textLayoutsTimer.current = window.setTimeout(() => {
+      void (async () => {
+        const bridge = getBridge()
+        const current = await bridge.projects.get(projectId)
+        if (!current.ok || !current.value) return
+        await bridge.projects.save({ ...current.value, textLayouts: next })
+      })()
+    }, 350)
   }
 
   /** Import local files through MediaVault (Electron only). */
@@ -574,6 +599,8 @@ export function HomeWorkspace({
                   audioPlan={audioPlan}
                   projectId={projectId}
                   media={media}
+                  textLayouts={textLayouts}
+                  onTextLayoutsChange={isBrowserPreview ? undefined : onTextLayoutsChange}
                 />
               ) : (
                 <MediaThumb kind={STYLE_THUMBS[styleId] ?? 'generic'} play className={styles.preview} />

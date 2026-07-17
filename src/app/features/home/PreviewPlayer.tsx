@@ -6,7 +6,11 @@ import { audioPlanToCompositionAudio, type AudioMixControls } from '@render/remo
 import type { VisualPlan } from '@features/visual/visualPlan'
 import type { AudioPlan } from '@features/audio/audioPlan'
 import type { MediaAsset } from '@shared/domain/media'
+import type { TextLayoutOverride } from '@shared/domain/textLayout'
+import { Button } from '../../ui/Button'
+import { TextLayoutEditor } from './TextLayoutEditor'
 import { ErrorBoundary } from '../../ErrorBoundary'
+import { copy } from '../../content/copy'
 import styles from './HomeWorkspace.module.css'
 
 /**
@@ -25,14 +29,20 @@ export function PreviewPlayer({
   audioPlan,
   projectId,
   media,
+  textLayouts = [],
+  onTextLayoutsChange,
 }: {
   visualPlan: VisualPlan
   audioPlan: AudioPlan | null
   projectId: string
   media: readonly MediaAsset[]
+  textLayouts?: readonly TextLayoutOverride[]
+  /** Present → the "Editar texto" editor is available (desktop app). */
+  onTextLayoutsChange?: (next: TextLayoutOverride[]) => void
 }): JSX.Element {
   const [masterVolume, setMasterVolume] = useState(1)
   const [narrationEnabled, setNarrationEnabled] = useState(true)
+  const [editing, setEditing] = useState(false)
 
   const controls: AudioMixControls = useMemo(
     () => ({ masterVolume, narrationEnabled }),
@@ -45,11 +55,27 @@ export function PreviewPlayer({
   )
 
   const props = useMemo(
-    () => visualPlanToCompositionProps(visualPlan, projectId, media, { audio }),
-    [visualPlan, projectId, media, audio],
+    () => visualPlanToCompositionProps(visualPlan, projectId, media, { audio, textLayouts }),
+    [visualPlan, projectId, media, audio, textLayouts],
   )
 
   const hasNarration = (audioPlan?.narration.length ?? 0) > 0
+  const canEdit = Boolean(onTextLayoutsChange)
+
+  if (editing && onTextLayoutsChange) {
+    return (
+      <ErrorBoundary>
+        <TextLayoutEditor
+          visualPlan={visualPlan}
+          projectId={projectId}
+          media={media}
+          textLayouts={textLayouts}
+          onChange={onTextLayoutsChange}
+          onClose={() => setEditing(false)}
+        />
+      </ErrorBoundary>
+    )
+  }
 
   return (
     <ErrorBoundary>
@@ -66,6 +92,11 @@ export function PreviewPlayer({
           loop
         />
       </div>
+      {canEdit ? (
+        <Button variant="secondary" block leftIcon="image" onClick={() => setEditing(true)} data-testid="edit-text">
+          {copy.textEditor.edit}
+        </Button>
+      ) : null}
 
       {audio && audio.warnings.length > 0 ? (
         <div className={styles.audioWarning} role="status" data-testid="audio-warning">
