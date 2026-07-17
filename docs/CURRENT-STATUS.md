@@ -13,15 +13,19 @@ Honest, per-feature state. Legend:
 
 ## Verification snapshot (current)
 
+Application acceptance commit **`34e7602`**; documentation HEAD before this update
+**`a4ffe79`**. Packaged executable: `C:\sowyvid\release\win-unpacked\SowyVid.exe`.
+
 | Check | Result |
 |---|---|
 | `npm run typecheck` | ✅ passes (node + web) |
 | `npm run lint` | ✅ 0 warnings (`packages/**` vendored engines excluded) |
-| `npm test` | ✅ **87 passing** across 16 files (adds FrameLogic visual adapter + Remotion composition-props) |
-| `npm run test:e2e` | ✅ 4 passing (browser; incl. UI→engine→real Remotion Player) |
-| `npm run test:e2e:electron` | ✅ 3 passing (real Electron: Northstar persistence + MediaVault import + protocol/preview) |
+| `npm test` | ✅ **320 unit** passing |
+| `npm run test:e2e` | ✅ **6 browser E2E** passing |
+| `npm run test:e2e:electron` | ✅ **8 Electron E2E** passing (incl. `owner-workflow` A/B/C/D) |
+| `npm run verify:render` | ✅ **13 real-render checks** passing (real MP4 + measured RMS + frames) |
+| `npm run test:e2e:packaged` | ✅ **3 packaged E2E** passing (2 export/edge + `owner-workflow.packaged` A/B/C/D) |
 | `npm run build` | ✅ succeeds (main + preload + renderer) |
-| Clean install (fresh clone) | ✅ install + all checks pass (729 pkgs, no workspace issues) |
 
 ## Core phases
 
@@ -44,6 +48,8 @@ Honest, per-feature state. Legend:
 | E | **Owner MP4 export ("Descargar video")** | ✅ | The button drives the production engine: typed ids-only IPC, job registry (one render per project, monotone progress, Spanish stages, safe cancel), native save dialog + presets, sanitized never-silently-overwritten filenames, restart-safe export history with stable failure codes. Proven by clicking the real button in real Electron — real MP4, RMS-audible, history survives restart (`docs/MP4-EXPORT.md`) |
 | F | **Windows packaged validation** | ✅ | The packaged `SowyVid.exe` (win-unpacked) exported a real 1080×1920 MP4 — h264+aac, **−26.9 dBFS**, frames validated — **from a planted stale cache**, using the shipped prebuilt render bundle, shipped browser, unpacked compositor and asar-fixed ffmpeg/ffprobe. NSIS installer NOT validated (`docs/WINDOWS-PACKAGED-VALIDATION.md`) |
 | F+ | **Owner hotfix: audible exports + visible history** | ✅ | Jorge's packaged exports were **silent (no audio stream)** because imported music was never selected, and his history was invisible after restart because no UI state was restored. Fixed: imported music auto-selects (owner-visible selector to change/remove; reference-guarded removal), and the most recent project — media, plans, export panel, history — restores on startup. Packaged suite now drives ONLY the owner's buttons |
+| G | **Owner-workflow recovery** | ✅ | Media is identified from **analyzed content** (ffprobe container/codecs/channels): a video that carries audio shows **`Video · Con audio`** and is never treated as music. **Source-video audio** is its own owner control ("Audio original del video") — off by default, own volume, shown only when an analyzed video truly carries audio; it can be **muted and replaced with an imported MP3/WAV**. A real **"Mis comerciales" library** lists **multiple independent persisted commercials** (not only the latest project), each with its **own export history** — exported videos are **visible inside SowyVid** without a restart, with "Archivo no encontrado" when a file was deleted. **Referenced media has a replace/remove decision dialog** (main-owned cascade, no renderer force flag); **existing exported MP4s are preserved** after source-media removal, and **commercial deletion can preserve exported files**. Proven end to end in the packaged `.exe` — see the packaged acceptance below |
+| G+ | **Packaged A/B/C/D owner acceptance** | ✅ | The full flow runs inside `SowyVid.exe` through **visible owner controls only** (`e2e-packaged/owner-workflow.packaged.spec.ts`): `Video · Con audio` identification; source-video audio export **≈ −28.9 dBFS**; original audio muted then replaced with an imported MP3, replacement-music export **≈ −26.9 dBFS**; **two distinct persisted commercial ids** (`proj_w-eMPrOu_W`, `proj_QYBe3G3gGW`) both visible in Mis comerciales after restart with their own export history; referenced-media removal via the dialog with prior exports preserved; commercial deletion preserving the exported file; a final restart leaving only the intended survivor |
 
 ## Engine vault (Jorge Engine Vault v1.0.0)
 
@@ -86,25 +92,53 @@ independently re-run here — they will be validated as each is integrated.
   scene, plan-defined loop/freeze when a clip is short, poster as the loading/failure
   fallback, and **source audio muted by default**. Proven by a real ffmpeg clip that
   decodes, plays and seeks inside Electron.
+- **Media is identified from analyzed content, not its extension** — ffprobe persists
+  container/codecs/sample-rate/channels; tiles read `Video · Con audio`,
+  `Video · Sin audio`, `Música · MP3 · 24 s`, `Imagen · Vertical`. An MP4 that carries
+  audio is a VIDEO, never background music; an extension/container mismatch is marked
+  invalid.
+- **Source-video audio is an owner control** ("Audio original del video") — off by
+  default, its own volume, shown only when an analyzed video truly carries audio, and
+  it can be **muted and replaced with an imported MP3/WAV** as background music. Preview
+  and export honor the same persisted setting (packaged source-audio export ≈ −28.9 dBFS;
+  replacement-music export ≈ −26.9 dBFS).
+- **Real "Mis comerciales" library** over every persisted project — **multiple
+  independent commercials** (not only the latest), each card showing name/thumb/status/
+  duration/format/media+export counts, with Abrir / Renombrar / Duplicar / Eliminar /
+  Abrir último video / carpeta, and a **per-commercial "Videos creados" export history**.
+- **Exported videos are visible inside SowyVid** without a restart (step 4 and the
+  library), with play / open-file / open-folder / crear-otra-versión, and "Archivo no
+  encontrado" retained when a file was deleted from disk.
+- **New commercial isolation + restore** — "Nuevo comercial" starts a fresh id without
+  overwriting the current one; the current commercial's name shows on Home; on startup
+  the most-recent commercial is restored while the others remain in the library.
+- **Referenced media can be safely replaced or removed** — the decision dialog
+  (Reemplazar / Quitar del comercial y eliminar / Cancelar) is main-owned (no renderer
+  force flag); it rebuilds plans from persisted state, **preserves existing exported
+  MP4s**, and clears dangling references. Deleting a whole commercial can preserve its
+  exported files.
+- **Full packaged A/B/C/D acceptance** through visible owner controls inside the real
+  `SowyVid.exe`.
 
 ## What does NOT work yet (not pretended to)
 
 - **The NSIS installer is unvalidated** — packaged validation ran against the
   unpacked (`--dir`) build. No installed-from-setup.exe run has been performed.
-  Binaries are unsigned.
-- **Music selection is minimal, not a library.** Imported music is auto-selected
-  as the commercial's music and a "Música del comercial" selector lets the owner
-  change or remove it — that fixed the silent packaged exports. There is still no
-  in-app track preview, no `audioMeta` form, and no Suno-brief UI.
+- **Binaries are unsigned.**
+- **Music selection is functional but not yet a complete Music Center.** The owner
+  can import, auto-select, change, remove and set the volume of a background track,
+  and replace imported source-video audio with it — but there is **no in-app music
+  preview and no full metadata management** (`audioMeta`: title/creator/license).
+- **No Suno owner UI yet** — the deterministic music brief exists in the engine but is
+  not exposed in the interface (no copy-brief, no "Abrir Suno").
+- **No narration / Voice Engine integration yet** — the AudioPlan supports imported
+  narration, but SowyVid has no TTS (PromptGate deferred); narration exists only if a
+  voice file is imported.
+- **No BridgeDrop phone upload** (`Mi teléfono` unavailable).
+- **No CellHub integration.**
+- **No social publishing** (🔒 blocked — needs official platform APIs/OAuth/review).
 - **Human hearing confirmation is Jorge's gate** — automation measures RMS and
   validates decode; it does not listen through speakers.
-- **No music library UI yet** — the AudioPlan resolves `audio.musicId`, but choosing /
-  previewing / replacing a track in the interface is not built. The Suno music brief is
-  likewise not wired into the UI.
-- **No narration source** — the AudioPlan supports imported narration, but SowyVid has
-  no TTS (PromptGate is deferred), so narration exists only if a voice file is imported.
-- Phone upload (`Mi teléfono`) — deferred to BridgeDrop (Phase E), marked unavailable.
-- Real AI (PromptGate, Phase F); social publishing (🔒 blocked).
 
 ## Known issues / caveats
 
@@ -124,15 +158,22 @@ independently re-run here — they will be validated as each is integrated.
 - Real social publishing — needs official platform APIs, approved apps, OAuth, and
   review. SowyVid will export platform-ready media instead. No fake "published".
 
-## Recommended next step
+## Recommended next milestone
 
-The export vertical is closed: an owner can click **Descargar video** in the
-packaged app and receive a real, audible MP4, and see it in history after a
-restart. Next, in order of value:
+**Music Center + Manual Suno Workflow.** The export vertical and the
+owner-workflow-recovery milestone are both closed (proven in the packaged
+`.exe`): an owner can run multiple commercials, hear a video's original audio or
+imported music, see every export inside the app, and safely manage commercials
+and media across restarts. The next milestone turns today's functional music
+selection into a real Music Center:
 
-1. **Music library UI + Suno brief UI** — choose/preview/replace a track, fill
-   in `audioMeta`, copy the brief, "Abrir Suno". The engine and export already
-   honor all of it; only the interface is missing.
-2. **Installer validation** — build and install the NSIS setup, re-run the
-   packaged export checks against the installed app; then signing.
-3. Then BridgeDrop (phone import) and PromptGate (AI) — separate milestones.
+- In-app track **preview/audition** and clear selection/replacement UI.
+- Full **`audioMeta` management** (title / creator / source / mood / license notes).
+- The **manual Suno workflow** surfaced in the UI — show the deterministic brief,
+  copy it, "Abrir Suno" — no unofficial APIs.
+
+Later milestones (not part of the above, in rough order of value): NSIS installer
+validation + signing; then BridgeDrop (phone upload) and PromptGate
+(AI/narration/Voice Engine).
+
+_Do not begin the Music Center milestone yet._
