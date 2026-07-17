@@ -1,8 +1,9 @@
 # SowyVid — Engineering Handoff
 
-_Last updated at the owner-workflow-recovery milestone, with the A/B/C/D
-acceptance flow proven inside the packaged `.exe` (application commit `34e7602`),
-branch `main`, synced with `origin/main`._
+_Last updated at the Music Center + Manual Suno milestone (a persistent global
+music library, in-app preview, cross-commercial reuse, and the manual Suno brief
+workflow), proven in the packaged `.exe`. Branch `main`, synced with
+`origin/main`._
 
 ## What this is
 
@@ -146,13 +147,46 @@ controls (bridge calls appear solely as read-only assertions). Proven by
 - **Final restart leaves only the intended survivor** — after a further restart,
   only Commercial A remained (`survivors === [proj_w-eMPrOu_W]`).
 
+### Music Center + Manual Suno (this milestone)
+
+A real, application-level **music library** — not a per-project list — proven by
+owner-path tests in real Electron and inside `SowyVid.exe`
+(`e2e-electron/music-center.spec.ts`, `e2e-packaged/music-center.packaged.spec.ts`):
+
+- **Global catalog + managed vault** (`<userData>/music`, migration **v4**). A
+  track's bytes live once, deduplicated by content hash; commercials reference it
+  by a stable `music_<hash>` id (`project.audio.musicTrackId`). One physical file
+  is reused across many commercials, with an independent volume per commercial.
+- **Content identity** — MP3/WAV only, confirmed by ffprobe (real audio stream,
+  duration, codec, sample rate, channels). An MP4 with audio stays a VIDEO /
+  source-video audio and never enters the library as a song.
+- **In-app preview** through the SAME production media protocol the render uses
+  (`sowyvid-media://music/<id>`), byte-range aware. ONE shared player: starting a
+  track stops any other — never two at once. Preview volume is separate from a
+  commercial's background-music volume.
+- **Honest metadata** — title/creator/source/license/vocal, progressive (nothing
+  required before listening/using); unknown license stays visibly unconfirmed and
+  the app never claims the owner holds rights.
+- **Safe references (main-owned)** — deleting an unused track removes its file; a
+  used track opens a decision dialog listing every commercial and offers
+  replace-in-all / remove-from-all-and-delete. Exported MP4s are never touched.
+- **Manual Suno** — a deterministic, instrumental-by-default brief from the
+  commercial's own intelligence (Northstar intent + FrameLogic energy +
+  SoundWeave duration); copy it, `shell.openExternal` the OFFICIAL site, import
+  the downloaded track (tagged `suno-manual`, brief stored), select it. **No
+  unofficial API, no automation, no scraping.**
+- **Legacy migration** — a one-time, idempotent pass brings pre-Music-Center
+  project music into the catalog, deduped by hash, preserving selections and
+  keeping old projects renderable.
+
 ## What is NOT done (do not claim these work)
 
 - **The NSIS installer is unvalidated** — packaged validation used the
   win-unpacked build. No installed-from-setup.exe run; binaries unsigned.
-- **Music selection has no track preview / `audioMeta` form / Suno-brief UI** —
-  the owner can choose, change, remove and set the volume of a track, but cannot
-  audition it in-app or fill in title/creator/license metadata yet.
+- **The Music Center is the library + manual Suno brief, not a full Music
+  Center-plus** — no in-app track trimming, no waveform, no automatic mood/BPM
+  detection (mood/energy are owner-set), and no "replace managed file in place"
+  (replacement is done at the selection level across commercials).
 - **No narration source** — the AudioPlan supports imported narration; SowyVid has
   no TTS (PromptGate deferred).
 - **Phone upload** (BridgeDrop, "Mi teléfono" unavailable), **AI** (PromptGate).
@@ -187,10 +221,10 @@ npm run package:win       # electron-vite build + prebuilt render bundle + win-u
 npm run test:e2e:packaged # packages, launches the REAL SowyVid.exe, validates its MP4
 ```
 
-Current status: typecheck ✓ · lint ✓ · **320 unit** ✓ · **6 browser e2e** ✓ ·
-**8 real-Electron e2e** ✓ · **13 real-render checks** ✓ · **3 packaged e2e** ✓ ·
-build ✓. The 3 packaged e2e are the two export/edge specs plus the new
-`owner-workflow.packaged.spec.ts` (A/B/C/D). Honest per-feature state:
+Current status: typecheck ✓ · lint ✓ · **339 unit** ✓ · **6 browser e2e** ✓ ·
+**9 real-Electron e2e** ✓ · **13 real-render checks** ✓ · **4 packaged e2e** ✓ ·
+build ✓. Packaged e2e: two export/edge specs, `owner-workflow.packaged` (A/B/C/D),
+and `music-center.packaged` (A–E). Honest per-feature state:
 **`docs/CURRENT-STATUS.md`**.
 
 ## Key locations
@@ -250,20 +284,19 @@ build ✓. The 3 packaged e2e are the two export/edge specs plus the new
 
 ## Recommended next step
 
-The export vertical AND the owner-workflow-recovery milestone are **closed**: an
-owner can run two separate commercials, hear a video's original audio and
-imported music, see every export inside the app, manage/rename/duplicate/delete
-commercials, replace or safely remove referenced media, and have all of it
-survive restart — proven in the packaged `.exe` and by owner-path tests. Next,
-in order of value:
+The export vertical, the owner-workflow-recovery milestone AND the Music Center +
+Manual Suno milestone are **closed** — all proven in the packaged `.exe`. An owner
+can build a reusable music library, audition tracks, reuse one across commercials,
+generate and copy a Suno brief, import the result, and hear the exact track in the
+export. Next, in order of value:
 
-1. **Music library UI + Suno brief UI** — audition a track, fill in `audioMeta`
-   (title/creator/license), copy the brief, "Abrir Suno". Selection, volume,
-   replace/remove and export already honor everything; only preview + the
-   metadata form remain.
-2. **Installer validation + signing** — build and install the NSIS setup,
-   re-run the packaged export checks against the installed app.
-3. Then BridgeDrop (phone import), then PromptGate (AI/narration).
+1. **Installer validation + signing** — build and install the NSIS setup, re-run
+   the packaged export + music checks against the installed app.
+2. **BridgeDrop** (phone import), then **PromptGate** (AI / narration / Voice
+   Engine) — each its own milestone.
+
+Deliberately still open inside music (not started): in-app trimming, waveform
+scrubbing, automatic mood/BPM detection, and in-place managed-file replacement.
 
 Packaged specifics — resource map, dev-vs-packaged resolution, test seams, the
 asar spawn pitfall — live in **`docs/WINDOWS-PACKAGED-VALIDATION.md`**.
