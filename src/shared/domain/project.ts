@@ -9,6 +9,7 @@ import {
 } from './enums'
 import { MediaAsset } from './media'
 import { TextLayoutOverride } from './textLayout'
+import { CommercialPlan } from './commercialPlan'
 
 const hexColor = z
   .string()
@@ -125,6 +126,12 @@ export const Project = z.object({
    * JSON — no schema migration needed.
    */
   textLayouts: z.array(TextLayoutOverride).default([]),
+  /**
+   * The accepted fact-safe Commercial Plan behind this commercial, when the
+   * owner built it through the assistant. Additive and defaulted — projects
+   * created the classic way (description → style) simply leave it null.
+   */
+  commercialPlan: CommercialPlan.nullable().default(null),
   status: ProjectStatus.default('draft'),
   createdAt: z.string().datetime(),
   updatedAt: z.string().datetime(),

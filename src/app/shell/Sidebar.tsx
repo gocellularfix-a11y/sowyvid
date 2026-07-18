@@ -3,7 +3,7 @@ import { MediaThumb } from '../ui/MediaThumb'
 import { copy } from '../content/copy'
 import styles from './Sidebar.module.css'
 
-export type NavKey = 'home' | 'myCommercials' | 'music' | 'material'
+export type NavKey = 'home' | 'assistant' | 'myCommercials' | 'music' | 'material'
 
 interface NavItem {
   key: NavKey
@@ -13,6 +13,7 @@ interface NavItem {
 
 const NAV: NavItem[] = [
   { key: 'home', label: copy.nav.home, icon: 'home' },
+  { key: 'assistant', label: copy.nav.assistant, icon: 'bulb' },
   { key: 'myCommercials', label: copy.nav.myCommercials, icon: 'folder' },
   { key: 'music', label: copy.nav.music, icon: 'monitor' },
   { key: 'material', label: copy.nav.material, icon: 'image' },

@@ -4,6 +4,7 @@ import { Sidebar, type NavKey } from './shell/Sidebar'
 import { HomeWorkspace } from './features/home/HomeWorkspace'
 import { MyCommercials } from './features/library/MyCommercials'
 import { MusicCenter } from './features/music/MusicCenter'
+import { CommercialAssistant } from './features/prompter/CommercialAssistant'
 import { Icon, type IconName } from './ui/Icon'
 import { useToast } from './ui/toastContext'
 import { getBridge, isBrowserPreview } from './bridge'
@@ -97,6 +98,7 @@ export function App(): JSX.Element {
                 <span className={styles.placeholderBody}>Cargando…</span>
               </div>
             ))}
+          {nav === 'assistant' && <CommercialAssistant onCreated={openCommercial} />}
           {nav === 'myCommercials' && <MyCommercials onOpen={openCommercial} />}
           {nav === 'music' && (
             <MusicCenter currentProjectId={currentId} currentProjectName={currentName} />
