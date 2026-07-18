@@ -30,6 +30,7 @@
     "postinstall": "node scripts/copy-sql-wasm.mjs",
     "verify:render": "vitest run src/features/render/realRender.test.ts --testTimeout=900000",
     "prepare:render-bundle": "vite-node --config vitest.config.ts scripts/prepare-render-bundle.ts",
+    "demo:commercial-prompter": "vite-node --config vitest.config.ts scripts/demo-commercial-prompter.ts",
     "package:win": "npm run build && npm run prepare:render-bundle && electron-builder --win --dir",
     "test:e2e:packaged": "npm run package:win && playwright test --config playwright.packaged.config.ts"
   },
