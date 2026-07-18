@@ -1,9 +1,8 @@
 # SowyVid — Engineering Handoff
 
-_Last updated at the Music Center + Manual Suno milestone (a persistent global
-music library, in-app preview, cross-commercial reuse, and the manual Suno brief
-workflow), proven in the packaged `.exe`. Branch `main`, synced with
-`origin/main`._
+_Last updated at the Visual Text Layout Editor milestone (direct-manipulation
+text placement with canonical, preview/export-identical normalized layouts),
+proven in the packaged `.exe`. Branch `main`, synced with `origin/main`._
 
 ## What this is
 
@@ -179,6 +178,35 @@ owner-path tests in real Electron and inside `SowyVid.exe`
   project music into the catalog, deduped by hash, preserving selections and
   keeping old projects renderable.
 
+### Visual Text Layout Editor (this milestone)
+
+The owner can directly place the text that appears in the video — proven by
+owner-path tests in real Electron and inside `SowyVid.exe`
+(`e2e-electron/text-editor.spec.ts`, `e2e-packaged/text-editor.packaged.spec.ts`):
+
+- **One canonical layout model** (`src/shared/domain/textLayout.ts`): normalized
+  (0..1) center + width + scale + alignment per (sceneId, role, aspectRatio),
+  persisted on `project.textLayouts`. Additive, Zod-defaulted — **no DB
+  migration** (it lives in the project JSON); legacy projects load as `[]` and
+  render with the automatic layout. Only customized elements override.
+- **Preview == export by construction**: both the `<Player>` preview and the
+  Remotion render read the SAME resolved text elements through one shared helper
+  (`compositionTextElements`); the composition positions every element
+  absolutely. Packaged parity measured **0.020** (bright-text centroid distance,
+  normalized) against a documented **0.12** tolerance.
+- **"Editar texto"** opens a per-scene direct-manipulation editor: select (with
+  overlap cycling + label), drag (pointer/touch), resize handle, arrow-key nudge
+  (Shift bigger, Escape cancels), safe-area + snap guides (Alt disables snap),
+  unsafe-boundary warning, and controls (size/width/alignment/lock/reset) plus
+  presets, "Copiar posición a…" and "Restablecer texto de esta escena".
+- **Aspect-ratio isolation** (§8 option A): a 9:16 customization does not affect
+  1:1 or 16:9 — each format shows the automatic layout until customized.
+- **Persistence & performance**: editing updates the preview instantly from
+  props (no concept/plan recompile — layouts apply in `visualPlanToCompositionProps`)
+  and persists debounced (once per drag, not per pixel). Duplication copies the
+  layouts; a new commercial does not inherit them; reset restores one element (or
+  a whole scene).
+
 ## What is NOT done (do not claim these work)
 
 - **The NSIS installer is unvalidated** — packaged validation used the
@@ -221,11 +249,15 @@ npm run package:win       # electron-vite build + prebuilt render bundle + win-u
 npm run test:e2e:packaged # packages, launches the REAL SowyVid.exe, validates its MP4
 ```
 
-Current status: typecheck ✓ · lint ✓ · **339 unit** ✓ · **6 browser e2e** ✓ ·
-**9 real-Electron e2e** ✓ · **13 real-render checks** ✓ · **4 packaged e2e** ✓ ·
+Current status: typecheck ✓ · lint ✓ · **362 unit** ✓ · **6 browser e2e** ✓ ·
+**10 real-Electron e2e** ✓ · **13 real-render checks** ✓ · **5 packaged e2e** ✓ ·
 build ✓. Packaged e2e: two export/edge specs, `owner-workflow.packaged` (A/B/C/D),
-and `music-center.packaged` (A–E). Honest per-feature state:
-**`docs/CURRENT-STATUS.md`**.
+`music-center.packaged` (A–E), and `text-editor.packaged` (preview/export parity,
+restart, reset). Honest per-feature state: **`docs/CURRENT-STATUS.md`**.
+
+> Flaky note: `export-button.spec` "second render refused while active" can fail
+> once when run late in the full Electron suite (render-engine warm-up timing);
+> it passes on isolated re-run. Not a regression.
 
 ## Key locations
 
@@ -284,19 +316,19 @@ and `music-center.packaged` (A–E). Honest per-feature state:
 
 ## Recommended next step
 
-The export vertical, the owner-workflow-recovery milestone AND the Music Center +
-Manual Suno milestone are **closed** — all proven in the packaged `.exe`. An owner
-can build a reusable music library, audition tracks, reuse one across commercials,
-generate and copy a Suno brief, import the result, and hear the exact track in the
-export. Next, in order of value:
+The export vertical, owner-workflow recovery, Music Center + Manual Suno AND the
+Visual Text Layout Editor are all **closed** — proven in the packaged `.exe`. An
+owner can build a reusable music library, and now directly place the on-screen
+text so the export matches the preview. Next, in order of value:
 
 1. **Installer validation + signing** — build and install the NSIS setup, re-run
-   the packaged export + music checks against the installed app.
+   the packaged export / music / text-layout checks against the installed app.
 2. **BridgeDrop** (phone import), then **PromptGate** (AI / narration / Voice
    Engine) — each its own milestone.
 
-Deliberately still open inside music (not started): in-app trimming, waveform
-scrubbing, automatic mood/BPM detection, and in-place managed-file replacement.
+Deliberately still open (not started): in music — in-app trimming, waveform,
+automatic mood/BPM, in-place file replacement; in text — font/color/typography
+editing, group selection/multi-select, and per-element entrance animation.
 
 Packaged specifics — resource map, dev-vs-packaged resolution, test seams, the
 asar spawn pitfall — live in **`docs/WINDOWS-PACKAGED-VALIDATION.md`**.

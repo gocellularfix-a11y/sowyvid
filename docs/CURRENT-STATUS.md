@@ -19,11 +19,11 @@ Packaged executable: `C:\sowyvid\release\win-unpacked\SowyVid.exe`.
 |---|---|
 | `npm run typecheck` | ✅ passes (node + web) |
 | `npm run lint` | ✅ 0 warnings (`packages/**` vendored engines excluded) |
-| `npm test` | ✅ **339 unit** passing |
+| `npm test` | ✅ **362 unit** passing |
 | `npm run test:e2e` | ✅ **6 browser E2E** passing |
-| `npm run test:e2e:electron` | ✅ **9 Electron E2E** passing (incl. `owner-workflow` + `music-center`) |
+| `npm run test:e2e:electron` | ✅ **10 Electron E2E** passing (incl. `owner-workflow` + `music-center` + `text-editor`) |
 | `npm run verify:render` | ✅ **13 real-render checks** passing (real MP4 + measured RMS + frames) |
-| `npm run test:e2e:packaged` | ✅ **4 packaged E2E** passing (2 export/edge + `owner-workflow.packaged` A/B/C/D + `music-center.packaged` A–E) |
+| `npm run test:e2e:packaged` | ✅ **5 packaged E2E** passing (2 export/edge + `owner-workflow` A/B/C/D + `music-center` A–E + `text-editor` parity/restart/reset) |
 | `npm run build` | ✅ succeeds (main + preload + renderer) |
 
 ## Core phases
@@ -51,6 +51,8 @@ Packaged executable: `C:\sowyvid\release\win-unpacked\SowyVid.exe`.
 | G+ | **Packaged A/B/C/D owner acceptance** | ✅ | The full flow runs inside `SowyVid.exe` through **visible owner controls only** (`e2e-packaged/owner-workflow.packaged.spec.ts`): `Video · Con audio` identification; source-video audio export **≈ −28.9 dBFS**; original audio muted then replaced with an imported MP3, replacement-music export **≈ −26.9 dBFS**; **two distinct persisted commercial ids** both visible in Mis comerciales after restart with their own export history; referenced-media removal via the dialog with prior exports preserved; commercial deletion preserving the exported file; a final restart leaving only the intended survivor |
 | H | **Music Center + Manual Suno** | ✅ | A persistent **global music library** (migration **v4**, managed vault `<userData>/music`, content-hash dedup): a track's bytes live once and many commercials reference it by a stable `music_<hash>` id with independent per-commercial volume. MP3/WAV identified by ffprobe (real audio stream/duration/codec/rate/channels); an MP4 with audio stays source-video audio, never a song. **In-app preview** through the production media protocol (`sowyvid-media://music/`), ONE shared player that stops any other track; preview volume separate from background-music volume. Honest, progressive metadata (source/license/vocal; never claims rights). **Safe references** (main-owned): a used track opens a decision dialog listing every commercial with replace-in-all / remove-from-all-and-delete; exported MP4s untouched. **Manual Suno**: deterministic instrumental-by-default brief, copy, `shell.openExternal` to the official site, import tagged `suno-manual` with the brief stored — no unofficial API. A one-time idempotent **legacy migration** brings pre-Music-Center project music into the catalog, deduped, preserving selections |
 | H+ | **Music Center packaged acceptance** | ✅ | A–E inside `SowyVid.exe`, visible controls only (`e2e-packaged/music-center.packaged.spec.ts`): import + analyze + play + edit metadata + restart-persist; reuse ONE track across two commercials (measurable audio in both exports, one managed file, two usages); manual Suno brief + `openExternal` seam + import `suno-manual`; delete a track used by two commercials via the dialog with prior exports preserved |
+| I | **Visual Text Layout Editor** | ✅ | The owner directly places on-screen text. One **canonical normalized model** (`textLayout.ts`) — center/width/scale/alignment per (sceneId, role, aspectRatio) on `project.textLayouts` (additive Zod field, **no DB migration**; legacy → `[]` automatic). **"Editar texto"** gives a per-scene direct-manipulation editor: select (overlap cycling + label), drag (pointer/touch), resize handle, arrow nudge (Shift/Escape), safe-area + snap guides (Alt disables), unsafe warning, controls (size/width/alignment/lock/reset), presets, "Copiar posición a…", "Restablecer texto de esta escena". Preview and export consume the SAME resolved elements (one shared helper) — no second implementation. Aspect-ratio isolated (§8 A). Editing is instant (props only, no recompile) and persisted debounced; duplication copies layouts, a new commercial does not inherit them, reset restores one element or a scene |
+| I+ | **Text editor packaged acceptance** | ✅ | Inside `SowyVid.exe`, visible controls only (`e2e-packaged/text-editor.packaged.spec.ts`): drag + resize the headline, export, and verify **preview/export text-centroid parity 0.020 < 0.12 tolerance**; the custom position **survives restart** exactly; **resetting returns the export to the automatic layout** (text centroid back to y≈0.73); Music Center, audio and Mis comerciales remain functional |
 
 ## Engine vault (Jorge Engine Vault v1.0.0)
 
@@ -132,6 +134,10 @@ independently re-run here — they will be validated as each is integrated.
   trimming, no waveform, no automatic mood/BPM detection** (mood/energy are
   owner-set), and no in-place managed-file replacement (replacement is at the
   selection level across commercials).
+- **The text editor places text; it does not restyle it.** Position, width,
+  scale and alignment are editable — but **not** font, color, typography, or
+  per-element entrance animation, and there is no multi-select / group move
+  (each element moves independently). Text content itself is not edited here.
 - **No narration / Voice Engine integration yet** — the AudioPlan supports imported
   narration, but SowyVid has no TTS (PromptGate deferred); narration exists only if a
   voice file is imported.
@@ -162,13 +168,15 @@ independently re-run here — they will be validated as each is integrated.
 ## Recommended next milestone
 
 **Installer validation + signing.** The export vertical, the owner-workflow
-recovery AND the Music Center + Manual Suno milestone are all closed and proven in
-the packaged `.exe`. The remaining packaged-distribution gap is the NSIS
-installer: build and install the setup, sign the binaries, and re-run the
-packaged export + Music Center checks against the installed app.
+recovery, the Music Center + Manual Suno milestone AND the Visual Text Layout
+Editor are all closed and proven in the packaged `.exe`. The remaining
+packaged-distribution gap is the NSIS installer: build and install the setup,
+sign the binaries, and re-run the packaged export / Music Center / text-layout
+checks against the installed app.
 
 Later milestones (each its own): BridgeDrop (phone upload); PromptGate
-(AI / narration / Voice Engine); and the deferred music polish (in-app trimming,
-waveform, automatic mood/BPM, in-place file replacement).
+(AI / narration / Voice Engine); the deferred music polish (in-app trimming,
+waveform, automatic mood/BPM, in-place file replacement); and text-styling
+(font/color/typography, group selection, per-element animation).
 
 _Do not begin the next milestone yet._
