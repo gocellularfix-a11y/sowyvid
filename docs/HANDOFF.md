@@ -1,8 +1,11 @@
 # SowyVid — Engineering Handoff
 
-_Last updated at the Visual Text Layout Editor milestone (direct-manipulation
-text placement with canonical, preview/export-identical normalized layouts),
-proven in the packaged `.exe`. Branch `main`, synced with `origin/main`._
+_Last updated at Commercial Intelligence + PromptGate **Phase A** (a fact-safe,
+deterministic Commercial Prompter with an editable owner plan screen and a
+provider-neutral PromptGate foundation), proven in the packaged `.exe`. Phase B
+(live text-AI provider + Vidu image-to-video) is intentionally NOT started — the
+owner scoped this session to "Phase A first, then reassess". Branch `main`,
+synced with `origin/main`._
 
 ## What this is
 
@@ -207,6 +210,46 @@ owner-path tests in real Electron and inside `SowyVid.exe`
   layouts; a new commercial does not inherit them; reset restores one element (or
   a whole scene).
 
+### Commercial Intelligence + PromptGate — Phase A (this session)
+
+A fact-safe, deterministic **Commercial Prompter** (`src/features/prompter`,
+pure/isomorphic like Northstar) turns a plain goal into an editable, validated
+`CommercialPlan` — proven by owner-path tests in real Electron and the packaged
+`.exe` (`e2e-electron/commercial-assistant.spec.ts`,
+`e2e-packaged/commercial-assistant.packaged.spec.ts`) and by
+`npm run demo:commercial-prompter`:
+
+- **Fact safety is the core.** SowyVid never invents specs/price/promo/warranty/
+  stock/accessories/variant. Facts are classified (`owner_provided`,
+  `inventory_provided`, `verified_catalog`, `inferred_noncritical`, `unknown`);
+  only the first three may be stated as claims. The `CommercialPlanValidator`
+  strips any claim (mAh/MP/GHz/5G/screen size/price/etc.) not backed by a
+  claimable fact — for deterministic AND AI output.
+- **Owner facts win, verbatim.** "Samsung A16, nuevo, 128 GB, $179, case+vidrio,
+  disponible hoy, Go Cellular" is preserved exactly; a single fact change
+  regenerates only the affected copy (role-stable scene ids preserve manual
+  text-layout overrides; removed scenes are reported, not silently dropped).
+- **Editable owner plan screen** (nav "Asistente"): detected product, info-to-
+  confirm as optional fields, recommended angle, editable narration/overlays,
+  visual plan, suggested external clip. No JSON/schemas/ids exposed. "Crear
+  comercial" creates a NEW project (never overwriting one) with the plan
+  persisted (`project.commercialPlan`, additive/defaulted, no DB migration).
+- **PromptGate foundation** (provider-neutral): `TextAIProvider` interface +
+  registry + `DeterministicFallbackProvider`; a **text-only privacy sanitizer**
+  (never media/paths/keys/records) whose exact payload is shown in a privacy
+  preview; `applyProposal` repairs or rejects unsafe AI output and never applies
+  a partially invalid plan. **No live provider wired** (no key) — the AI action
+  shows an honest "AI no configurada" and the deterministic path stays fully
+  usable.
+- **Provider-neutral video prompts**: `VideoPromptAdapter` + Vidu prompt shaping
+  produce ~4s, no-generated-text/audio/branding, source-preserving shot prompts —
+  but **no Vidu API and no paid path exist this session**.
+
+**Phase B is NOT started** (owner decision): live text-AI provider, Vidu
+provider, credits, cost-approval, task persistence, download/import. Live
+acceptance is therefore **TECHNICALLY READY — LIVE ACCEPTANCE PENDING** for
+anything requiring an AI key, a Vidu key + credits, and the exact product image.
+
 ## What is NOT done (do not claim these work)
 
 - **The NSIS installer is unvalidated** — packaged validation used the
@@ -249,11 +292,12 @@ npm run package:win       # electron-vite build + prebuilt render bundle + win-u
 npm run test:e2e:packaged # packages, launches the REAL SowyVid.exe, validates its MP4
 ```
 
-Current status: typecheck ✓ · lint ✓ · **362 unit** ✓ · **6 browser e2e** ✓ ·
-**10 real-Electron e2e** ✓ · **13 real-render checks** ✓ · **5 packaged e2e** ✓ ·
-build ✓. Packaged e2e: two export/edge specs, `owner-workflow.packaged` (A/B/C/D),
-`music-center.packaged` (A–E), and `text-editor.packaged` (preview/export parity,
-restart, reset). Honest per-feature state: **`docs/CURRENT-STATUS.md`**.
+Current status: typecheck ✓ · lint ✓ · **386 unit** ✓ · **6 browser e2e** ✓ ·
+**11 real-Electron e2e** ✓ · **13 real-render checks** ✓ · **6 packaged e2e** ✓ ·
+build ✓ · `demo:commercial-prompter` ✓. Packaged e2e: two export/edge specs,
+`owner-workflow` (A/B/C/D), `music-center` (A–E), `text-editor` (parity/restart/
+reset), and `commercial-assistant` (Phase A). Honest per-feature state:
+**`docs/CURRENT-STATUS.md`**.
 
 > Flaky note: `export-button.spec` "second render refused while active" can fail
 > once when run late in the full Electron suite (render-engine warm-up timing);
@@ -316,10 +360,15 @@ restart, reset). Honest per-feature state: **`docs/CURRENT-STATUS.md`**.
 
 ## Recommended next step
 
-The export vertical, owner-workflow recovery, Music Center + Manual Suno AND the
-Visual Text Layout Editor are all **closed** — proven in the packaged `.exe`. An
-owner can build a reusable music library, and now directly place the on-screen
-text so the export matches the preview. Next, in order of value:
+Commercial Intelligence **Phase A** is closed (deterministic fact-safe prompter +
+editable plan + PromptGate foundation, packaged-proven). The obvious next step is
+**Phase B, when the owner reassesses**: wire ONE official text-AI provider behind
+PromptGate (key via safeStorage, main-process calls, cost/cache controls), then
+the provider-neutral Vidu image-to-video layer (verify current OFFICIAL Vidu
+docs, cheapest 720p/~4s/vertical/no-audio profile, explicit paid-approval gate,
+task persistence + restart-safe polling, download validation + managed import).
+**No paid Vidu request may occur until the owner explicitly approves it.** Earlier
+milestones remain closed and packaged-proven:
 
 1. **Installer validation + signing** — build and install the NSIS setup, re-run
    the packaged export / music / text-layout checks against the installed app.

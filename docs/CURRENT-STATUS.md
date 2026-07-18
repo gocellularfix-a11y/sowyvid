@@ -19,11 +19,12 @@ Packaged executable: `C:\sowyvid\release\win-unpacked\SowyVid.exe`.
 |---|---|
 | `npm run typecheck` | ✅ passes (node + web) |
 | `npm run lint` | ✅ 0 warnings (`packages/**` vendored engines excluded) |
-| `npm test` | ✅ **362 unit** passing |
+| `npm test` | ✅ **386 unit** passing |
 | `npm run test:e2e` | ✅ **6 browser E2E** passing |
-| `npm run test:e2e:electron` | ✅ **10 Electron E2E** passing (incl. `owner-workflow` + `music-center` + `text-editor`) |
+| `npm run test:e2e:electron` | ✅ **11 Electron E2E** passing (incl. `owner-workflow` + `music-center` + `text-editor` + `commercial-assistant`) |
 | `npm run verify:render` | ✅ **13 real-render checks** passing (real MP4 + measured RMS + frames) |
-| `npm run test:e2e:packaged` | ✅ **5 packaged E2E** passing (2 export/edge + `owner-workflow` A/B/C/D + `music-center` A–E + `text-editor` parity/restart/reset) |
+| `npm run test:e2e:packaged` | ✅ **6 packaged E2E** passing (2 export/edge + `owner-workflow` + `music-center` + `text-editor` + `commercial-assistant`) |
+| `npm run demo:commercial-prompter` | ✅ prints both Samsung scenarios (fact-safe, no AI/network/Vidu) |
 | `npm run build` | ✅ succeeds (main + preload + renderer) |
 
 ## Core phases
@@ -53,6 +54,9 @@ Packaged executable: `C:\sowyvid\release\win-unpacked\SowyVid.exe`.
 | H+ | **Music Center packaged acceptance** | ✅ | A–E inside `SowyVid.exe`, visible controls only (`e2e-packaged/music-center.packaged.spec.ts`): import + analyze + play + edit metadata + restart-persist; reuse ONE track across two commercials (measurable audio in both exports, one managed file, two usages); manual Suno brief + `openExternal` seam + import `suno-manual`; delete a track used by two commercials via the dialog with prior exports preserved |
 | I | **Visual Text Layout Editor** | ✅ | The owner directly places on-screen text. One **canonical normalized model** (`textLayout.ts`) — center/width/scale/alignment per (sceneId, role, aspectRatio) on `project.textLayouts` (additive Zod field, **no DB migration**; legacy → `[]` automatic). **"Editar texto"** gives a per-scene direct-manipulation editor: select (overlap cycling + label), drag (pointer/touch), resize handle, arrow nudge (Shift/Escape), safe-area + snap guides (Alt disables), unsafe warning, controls (size/width/alignment/lock/reset), presets, "Copiar posición a…", "Restablecer texto de esta escena". Preview and export consume the SAME resolved elements (one shared helper) — no second implementation. Aspect-ratio isolated (§8 A). Editing is instant (props only, no recompile) and persisted debounced; duplication copies layouts, a new commercial does not inherit them, reset restores one element or a scene |
 | I+ | **Text editor packaged acceptance** | ✅ | Inside `SowyVid.exe`, visible controls only (`e2e-packaged/text-editor.packaged.spec.ts`): drag + resize the headline, export, and verify **preview/export text-centroid parity 0.020 < 0.12 tolerance**; the custom position **survives restart** exactly; **resetting returns the export to the automatic layout** (text centroid back to y≈0.73); Music Center, audio and Mis comerciales remain functional |
+| J | **Commercial Intelligence + PromptGate — Phase A** | ✅ | A fact-safe, deterministic **Commercial Prompter** (`src/features/prompter`, pure/isomorphic): intent parsing, fact classification (only `owner_provided`/`inventory_provided`/`verified_catalog` are claimable), owner-facts-win with single-fact partial regeneration, angle selection (no price/promo angle without price/promo), natural MX-Spanish/English copy (product name ≤ once), 6–8 scene storyboard with ≤ 2 external-video scenes, provider-neutral + Vidu-safe shot prompts, and a `CommercialPlanValidator` that strips any unsupported claim from deterministic OR AI output. Editable **"Asistente"** owner screen persists the accepted `CommercialPlan` on a new project (`project.commercialPlan`, additive, no DB migration). **PromptGate** foundation: `TextAIProvider` interface + registry + `DeterministicFallbackProvider` + a text-only privacy sanitizer + `applyProposal` that repairs/rejects unsafe AI (never partial). `npm run demo:commercial-prompter` prints both Samsung scenarios |
+| J+ | **Phase A packaged acceptance** | ✅ | `e2e-packaged/commercial-assistant.packaged.spec.ts`: deterministic plan without AI, fact correction → partial regen, text-only privacy preview with honest AI-not-configured state, create-from-plan, restart persistence, and Music Center / library still operational |
+| — | **Phase B (live AI provider + Vidu)** | ⬜ NOT STARTED | Owner scoped this session to "Phase A first, then reassess". Needs a real text-AI key, a Vidu key + credits, the exact product image, and verified official Vidu docs before any live/paid step — **TECHNICALLY READY, LIVE ACCEPTANCE PENDING** |
 
 ## Engine vault (Jorge Engine Vault v1.0.0)
 
@@ -138,6 +142,13 @@ independently re-run here — they will be validated as each is integrated.
   scale and alignment are editable — but **not** font, color, typography, or
   per-element entrance animation, and there is no multi-select / group move
   (each element moves independently). Text content itself is not edited here.
+- **No live AI and no video generation yet (Phase B not started).** The
+  Commercial Prompter is deterministic and fully usable, and PromptGate's
+  architecture is complete, but **no text-AI provider is wired** (no key) and
+  **no Vidu / image-to-video path exists** (no provider, no paid request). The
+  assistant's AI action honestly shows "AI no configurada". The prompter runs in
+  the renderer today; a live AI provider must run authenticated calls in the
+  main process via IPC when Phase B begins.
 - **No narration / Voice Engine integration yet** — the AudioPlan supports imported
   narration, but SowyVid has no TTS (PromptGate deferred); narration exists only if a
   voice file is imported.
@@ -167,12 +178,15 @@ independently re-run here — they will be validated as each is integrated.
 
 ## Recommended next milestone
 
-**Installer validation + signing.** The export vertical, the owner-workflow
-recovery, the Music Center + Manual Suno milestone AND the Visual Text Layout
-Editor are all closed and proven in the packaged `.exe`. The remaining
-packaged-distribution gap is the NSIS installer: build and install the setup,
-sign the binaries, and re-run the packaged export / Music Center / text-layout
-checks against the installed app.
+**Commercial Intelligence Phase B (when the owner reassesses).** Phase A is
+closed and packaged-proven. Phase B wires ONE official text-AI provider behind
+PromptGate (key via safeStorage, main-process calls, cost/cache controls), then
+the provider-neutral Vidu image-to-video layer — verify current OFFICIAL Vidu
+docs, pick the cheapest 720p/~4s/vertical/no-audio profile, gate every paid
+request behind explicit owner approval, persist tasks with restart-safe polling,
+and validate + managed-import the download. **No paid request without explicit
+owner approval.** (Installer validation + signing remains a separate later
+milestone.)
 
 Later milestones (each its own): BridgeDrop (phone upload); PromptGate
 (AI / narration / Voice Engine); the deferred music polish (in-app trimming,
